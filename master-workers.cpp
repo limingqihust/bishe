@@ -14,7 +14,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(s4u_app_masterworker, "Messages specific for this e
 static void master(std::vector<std::string> args)
 {
   xbt_assert(args.size() > 4, "The master function expects at least 3 arguments");
-
+  XBT_INFO("hello world from master");
   long tasks_count          = std::stol(args[1]);
   double compute_cost       = std::stod(args[2]);
   double communication_cost = std::stod(args[3]);
@@ -45,7 +45,7 @@ static void master(std::vector<std::string> args)
 static void worker(std::vector<std::string> args)
 {
   xbt_assert(args.size() == 1, "The worker expects no argument");
-
+  XBT_INFO("hello world from worker");
   simgrid::s4u::Host* my_host      = simgrid::s4u::this_actor::get_host();
   simgrid::s4u::Mailbox* mailbox = simgrid::s4u::Mailbox::by_name(my_host->get_name());
 
