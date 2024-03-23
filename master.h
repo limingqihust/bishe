@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
-
+#include "tera_sort/PartitionSampling.h"
+#include "tera_sort/Configuration.h"
 enum class MasterState { Free, Mapping, Reducing };
 
 struct MasterJobText {
@@ -22,16 +23,14 @@ public:
           worker_host_num_(worker_host_num),
           worker_host_names_(worker_host_names) {
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name + ":" + std::to_string(id));
-        for (auto name : worker_host_names) {
-            worker_mailboxs_.push_back(simgrid::s4u::Mailbox::by_name(name));
-        }
+
     }
 
     // 初始化该master需要执行的job
     void SetJobText(MasterJobText job_text) { job_text_ = job_text; };
 
     // 被MasterManager调用，接收一个Job
-    void DoJob();
+    void DoJob(std::vector<int> worker_ids);
 
     MasterState GetMasterState() const { return state_; }
 
@@ -49,6 +48,7 @@ private:
     std::vector<simgrid::s4u::Mailbox*> worker_mailboxs_;      // send info to worker managers
     simgrid::s4u::Mailbox* mailbox_;                           // receive data
     std::vector<simgrid::s4u::Mailbox*> worker_job_mailboxs_;  // worker mailbox responsible for this job
+    Configuration conf;
 };
 
 class MasterManager {
@@ -62,6 +62,10 @@ public:
         for (int i = 0; i < master_num; i++) {
             masters_.emplace_back(std::make_shared<Master>(i, my_host_name, worker_host_num, worker_host_names));
         }
+        mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_);
+        for(auto worker_host_name : worker_host_names_) {
+            worker_host_mailboxs_.push_back(simgrid::s4u::Mailbox::by_name(worker_host_name));
+        }
     }
 
     // receive a job, alloc a master to execute this job
@@ -69,11 +73,14 @@ public:
 
 private:
     int FindFreeMaster();
-
+    std::vector<int> RequestWorkerIds(int master_id);
+    
     int master_num_;                              // num of master in this master host
     int worker_host_num_;                         // num of worker host
     std::string my_host_name_;                    // name of master host
     std::vector<std::string> worker_host_names_;  // name of worker hosts
+    simgrid::s4u::Mailbox* mailbox_;              // receive message from worker manager
+    std::vector<simgrid::s4u::Mailbox*> worker_host_mailboxs_; // communicate with worker managers
     std::mutex mutex_;
     std::vector<std::shared_ptr<Master>> masters_;
 };

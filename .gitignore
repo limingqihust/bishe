@@ -8,3 +8,4 @@ ping-pong
 master-workers
 my_master_workers
 *.o
+*.out

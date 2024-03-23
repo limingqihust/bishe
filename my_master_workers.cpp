@@ -18,20 +18,23 @@ static void my_master(std::vector<std::string> args) {
     // do job now
     MasterJobText job_text;
     master_manager->Run(job_text);
-    while(true) {
-
-    }
+    while (true) {}
 }
 
 static void my_worker(std::vector<std::string> args) {
-    assert(args.size() == 4);
+    assert(args.size() >= 5);
 
     simgrid::s4u::Host* my_host = simgrid::s4u::this_actor::get_host();
     std::string my_host_name = my_host->get_name();
     std::string master_host_name = args[1];
     int worker_num = std::stoi(args[2]);
     int id = std::stoi(args[3]);
-    auto worker_manager = std::make_shared<WorkerManager>(my_host_name, master_host_name, id, worker_num);
+    std::vector<std::string> worker_host_names;
+    for (int i = 4; i < args.size(); i++) {
+        worker_host_names.emplace_back(args[i]);
+    }
+    auto worker_manager =
+        std::make_shared<WorkerManager>(my_host_name, master_host_name, id, worker_num, worker_host_names.size(), worker_host_names);
     worker_manager->Run();
 }
 int main(int argc, char* argv[]) {

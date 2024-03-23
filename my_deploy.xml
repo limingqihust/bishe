@@ -15,15 +15,24 @@
     <argument value="Tremblay" />        <!-- host name of master -->
     <argument value="5" />               <!-- num of workers in a worker node -->
     <argument value="1" />               <!-- worker host id -->
+    <argument value="Jupiter" />
+    <argument value="Fafard" />
+    <argument value="Ginette" />
   </actor>
   <actor host="Fafard" function="my_worker">
     <argument value="Tremblay" />        <!-- host name of master -->
     <argument value="5" />               <!-- num of workers in a worker node -->
     <argument value="2" />               <!-- worker host id -->
+    <argument value="Jupiter" />
+    <argument value="Fafard" />
+    <argument value="Ginette" />
   </actor>
   <actor host="Ginette" function="my_worker">
     <argument value="Tremblay" />        <!-- host name of master -->
     <argument value="5" />               <!-- num of workers in a worker node -->
     <argument value="3" />               <!-- worker host id -->
+    <argument value="Jupiter" />
+    <argument value="Fafard" />
+    <argument value="Ginette" />
   </actor>
 </platform>
