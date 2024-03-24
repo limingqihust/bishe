@@ -1,5 +1,7 @@
 #pragma once
 #include "common.h"
+#include "tera_sort/CodeGeneration.h"
+#include "tera_sort/CodedConfiguration.h"
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
 #include "tera_sort/Trie.h"
@@ -33,6 +35,9 @@ public:
         master_mailbox_ = simgrid::s4u::Mailbox::by_name(master_host_name_ + ":" + std::to_string(master_id));
     }
 
+    NodeSetDataPartMap encodePreData;
+    NodeSetDataPartMap decodePreData;
+
 private:
     void TeraSort();
     void ExecMap();
@@ -42,7 +47,17 @@ private:
     void PrintLocalList();
     void PrintPartitionCollection();
     void PrintPartitionTxData();
+    void PrintInputPartitionCollection();
 
+    void CodedTeraSort();
+    void GenMulticastGroup();
+    void ExecCodedMap();
+    void ExecCodedEncoding();
+    void ExecCodedShuffle();
+    void ExecCodedDecoding();
+    void ExecCodedReduce();
+    void SendEncodeData(EnData& endata, std::vector<int> dst_ids);
+    void RecvEncodeData(SubsetSId nsid);
 
     WorkerState state_;
     int id_;
@@ -57,6 +72,14 @@ private:
 
     /* used by tera_sort */
     Configuration* conf;
+    CodedConfiguration* coded_conf;
+    CodeGeneration* cg;
+    InputPartitionCollection inputPartitionCollection;
+    NodeSetEnDataMap encodeDataSend;
+    NodeSetVecEnDataMap encodeDataRecv;
+    MulticastGroupMap multicastGroupMap;
+    NodeSet localLoadSet;
+
     PartitionList partitionList;
     PartitionCollection partitionCollection;
     PartitionPackData partitionTxData;

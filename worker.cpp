@@ -49,7 +49,8 @@ void Worker::DoJob() {
         worker_partener_ids_.push_back(worker_partener_ids_temp[i]);
     }
     delete[] worker_partener_ids_temp;
-    TeraSort();
+    // TeraSort();
+    CodedTeraSort();
 }
 
 

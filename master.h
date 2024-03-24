@@ -2,6 +2,7 @@
 #include "common.h"
 #include "tera_sort/PartitionSampling.h"
 #include "tera_sort/Configuration.h"
+#include "tera_sort/CodedConfiguration.h"
 enum class MasterState { Free, Mapping, Reducing };
 
 struct MasterJobText {
@@ -38,6 +39,7 @@ public:
 
 private:
     void TeraSort();
+    void CodedTeraSort();
 
     MasterState state_;
     int id_;
@@ -49,6 +51,8 @@ private:
     simgrid::s4u::Mailbox* mailbox_;                           // receive data
     std::vector<simgrid::s4u::Mailbox*> worker_job_mailboxs_;  // worker mailbox responsible for this job
     Configuration conf;
+    CodedConfiguration coded_conf;
+
 };
 
 class MasterManager {

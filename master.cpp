@@ -71,5 +71,6 @@ void Master::DoJob(std::vector<int> worker_ids) {
     }
 
     // 2. do job
-    TeraSort();
+    // TeraSort();
+    CodedTeraSort();
 }
