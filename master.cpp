@@ -48,6 +48,31 @@ std::vector<int> MasterManager::RequestWorkerIds(int master_id) {
     return worker_ids;
 }
 
+/**
+ * modify parameter r of coded-terasort
+*/
+void MasterManager::SetR(int r) {
+    for(int i = 0; i < master_num_; i++) {
+        masters_[i]->SetR(r);
+    }
+}
+
+/**
+ * do micro experient with parameter r, return UtilityInfo
+*/
+UtilityInfo MasterManager::RunTryR(MasterJobText job, int r) {
+    // 1. find a free master, set its state to busy
+    int master_id = FindFreeMaster();
+    LOG_INFO("[master manager] choose id: %d to do job", master_id);
+    // 2. assign job to this master
+    masters_[master_id]->SetJobText(job);
+
+    // 3. let master to this job(return directly, free resources when job done automatically)
+    return masters_[master_id]->DoJobTryR(RequestWorkerIds(master_id), r);
+
+    return {-1, -1, -1};
+}
+
 
 /**
  * 被MasterManager调用
@@ -73,4 +98,28 @@ void Master::DoJob(std::vector<int> worker_ids) {
     // 2. do job
     // TeraSort();
     CodedTeraSort();
+}
+
+/**
+ * exec job with parameter r, return utility_info
+*/
+UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
+    for(int i = 0; i < worker_host_num_; i++) {
+        worker_mailboxs_.push_back(simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
+    }
+
+    // 1. notify worker_ids to all worker
+    for(auto mailbox : worker_mailboxs_) {
+        int* worker_ids_temp = new int [worker_host_num_];
+        for(int i = 0; i < worker_host_num_; i++) {
+            worker_ids_temp[i] = worker_ids[i];
+        }
+        mailbox->put(worker_ids_temp, worker_host_num_ * 4);
+    }
+
+    // 2. do job
+    // TeraSort();
+    CodedTeraSort();
+
+    return {-1, -1, -1};
 }

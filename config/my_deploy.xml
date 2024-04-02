@@ -1,0 +1,38 @@
+<?xml version='1.0'?>
+<!DOCTYPE platform SYSTEM "https://simgrid.org/simgrid.dtd">
+<platform version="4.1">
+  <!-- The master actor (with some arguments) -->
+  <actor host="node0" function="my_master">
+    <!-- name of hosts on which the workers are running -->
+    <argument value="5" />              <!-- master num of master node -->
+    <argument value="3" />              <!-- worker host num -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+  </actor>
+  <!-- The worker actors (with no argument) -->
+  <actor host="node1" function="my_worker">
+    <argument value="node0" />          <!-- host name of master -->
+    <argument value="5" />              <!-- num of workers in a worker node -->
+    <argument value="1" />              <!-- worker host id -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+  </actor>
+  <actor host="node2" function="my_worker">
+    <argument value="node0" />          <!-- host name of master -->
+    <argument value="5" />              <!-- num of workers in a worker node -->
+    <argument value="2" />              <!-- worker host id -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+  </actor>
+  <actor host="node3" function="my_worker">
+    <argument value="node0" />          <!-- host name of master -->
+    <argument value="5" />              <!-- num of workers in a worker node -->
+    <argument value="3" />              <!-- worker host id -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+  </actor>
+</platform>

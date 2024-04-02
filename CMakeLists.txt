@@ -11,12 +11,26 @@ find_package(SimGrid 3.27 REQUIRED) # This template requires SimGrid v3.27 becau
 
 include_directories(${SimGrid_INCLUDE_DIR})
 
-# add_executable(ping-pong ping-pong.cpp)
-# target_link_libraries(ping-pong ${SimGrid_LIBRARY})
+add_executable(ping-pong ping-pong.cpp)
+target_link_libraries(ping-pong ${SimGrid_LIBRARY})
 
-# add_executable(master-workers master-workers.cpp)
-# target_link_libraries(master-workers ${SimGrid_LIBRARY})
-file(GLOB TERA_SORT_SOURCES "tera_sort/*.cpp")
-add_executable(my_master_workers ${TERA_SORT_SOURCES} my_master_workers.cpp master.cpp worker.cpp tera_sort.cpp coded_tera_sort.cpp)
+add_executable(master-workers master-workers.cpp)
+target_link_libraries(master-workers ${SimGrid_LIBRARY})
+add_executable(Splitter "./tera_sort/Splitter.cpp" "./tera_sort/InputSplitter.cpp")
+
+add_executable(my_master_workers 
+    "./tera_sort/CodeGeneration.cpp" 
+    "./tera_sort/PartitionSampling.cpp" 
+    "./tera_sort/Trie.cpp" 
+    "./tera_sort/Utility.cpp" 
+    "my_master_workers.cpp" 
+    "master.cpp"
+    "worker.cpp" 
+    "tera_sort.cpp" 
+    "coded_tera_sort.cpp"
+    "online_learning.cpp"
+    "bandwidth_config.cpp")
 target_link_libraries(my_master_workers ${SimGrid_LIBRARY})
 
+add_executable(comm_demo comm_demo.cpp)
+target_link_libraries(comm_demo ${SimGrid_LIBRARY})

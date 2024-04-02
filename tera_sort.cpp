@@ -117,10 +117,6 @@ void Master::TeraSort() {
     for (auto mailbox : worker_mailboxs_) {
         mailbox->put(new unsigned char, sizeof(unsigned char));
     }
-
-    while (true) {
-        sleep(1);
-    }
 }
 
 void Worker::TeraSort() {
