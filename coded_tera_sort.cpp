@@ -75,10 +75,10 @@ void Master::CodedTeraSort() {
     for (auto mailbox : worker_mailboxs_) {
         // notify worker i to send data
         auto shuffle_start = std::chrono::high_resolution_clock::now();
-        LOG_INFO("[master] notify worker: %s to send data", mailbox->get_cname());
-        mailbox->put(new unsigned char, sizeof(unsigned char));
+        auto barrier_mailbox = simgrid::s4u::Mailbox::by_name(mailbox->get_name() + ":barrier");
+        barrier_mailbox->put(new unsigned char, sizeof(unsigned char));
         // wait for all worker receive data done
-        for (int i = 0; i < worker_host_num_ - 1; i++) {
+        for (int i = 0; i < worker_host_num_; i++) {
             delete mailbox_->get<unsigned char>();
         }
         auto shuffle_end = std::chrono::high_resolution_clock::now();
@@ -422,6 +422,10 @@ void Worker::ExecCodedShuffle() {
     clock_t time;
     //map< NodeSet, SubsetSId > ssmap = cg->getSubsetSIdMap();
     for (unsigned int activeId = 1; activeId <= coded_conf->getNumReducer(); activeId++) {
+        // delete mailbox_->get<unsigned char>();
+        if(activeId == host_id_) {
+            delete barrier_mailbox_->get<unsigned char>();
+        }
         vector<NodeSet>& vset = cg->getNodeSubsetSContain(activeId);
         for (auto nsit = vset.begin(); nsit != vset.end(); nsit++) {
             NodeSet ns = *nsit;
@@ -434,8 +438,18 @@ void Worker::ExecCodedShuffle() {
 
             // MPI_Comm mcComm = multicastGroupMap[nsid];
             if (host_id_ == activeId) {
-                delete mailbox_->get<unsigned char>();
-                SendEncodeData(encodeDataSend[nsid], {1, 2, 3});
+                std::vector<int> node_set;
+                for(auto node : ns) {
+                    node_set.push_back(node);
+                }
+                LOG_INFO("worker: %d send data, node_set: ", host_id_);
+                std::cout << "{";
+                for(auto node : ns) {
+                    std::cout << node << " ";
+                }
+                std::cout << "}" << std::endl;
+
+                SendEncodeData(encodeDataSend[nsid], node_set);
                 EnData& endata = encodeDataSend[nsid];
             } else if (ns.find(host_id_) != ns.end()) {
                 //convert activeId to rootId of a particular multicast group
@@ -447,12 +461,18 @@ void Worker::ExecCodedShuffle() {
                     rootId++;
                 }
                 RecvEncodeData(nsid);
+                LOG_INFO("worker: %d receive data, node_set: ", host_id_);
+                std::cout << "{";
+                for(auto node : ns) {
+                    std::cout << node << " ";
+                }
+                std::cout << "}" << std::endl;
                 // receive data done
-                master_mailbox_->put(new unsigned char, sizeof(unsigned char));
             }
         }
 
         // Active node should stop timer here
+        master_mailbox_->put(new unsigned char, sizeof(unsigned char));
         // MPI_Barrier(workerComm);
     }
 }
@@ -556,6 +576,9 @@ void Worker::ExecCodedReduce() {
     sort(localList.begin(), localList.end(), Sorter(coded_conf->getKeySize()));
 }
 
+/**
+ * send encoded data to dst_ids
+*/
 void Worker::SendEncodeData(EnData& endata, std::vector<int> dst_ids) {
     // Send actual data
     unsigned lineSize = coded_conf->getLineSize();

@@ -10,8 +10,8 @@ class CodedConfiguration : public Configuration {
   
  public:
  CodedConfiguration(): Configuration() {
-    numInput = 3;    // N is assumed to be K choose r     
-    numReducer = 3;  // K
+    numInput = 15;    // N is assumed to be K choose r     
+    numReducer = 6;  // K
     load = 2;        // r    
     
     strcpy(inputPath, "./Input/Input10000-C");

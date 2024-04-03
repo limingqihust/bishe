@@ -1,11 +1,11 @@
 #pragma once
+#include "bandwidth_config.h"
 #include "common.h"
 #include "tera_sort/CodeGeneration.h"
 #include "tera_sort/CodedConfiguration.h"
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
 #include "tera_sort/Trie.h"
-#include "bandwidth_config.h"
 enum class WorkerState { Free, Mapping, Reducing };
 
 /**
@@ -15,7 +15,8 @@ enum class WorkerState { Free, Mapping, Reducing };
 class Worker {
 public:
     Worker(std::string my_host_name, std::string master_host_name, int worker_host_num,
-           std::vector<std::string> worker_host_names, int id, int host_id, std::shared_ptr<BandWidthConfigModule> bw_config)
+           std::vector<std::string> worker_host_names, int id, int host_id,
+           std::shared_ptr<BandWidthConfigModule> bw_config)
         : state_(WorkerState::Free),
           id_(id),
           my_host_name_(my_host_name),
@@ -25,6 +26,7 @@ public:
           host_id_(host_id),
           bw_config_(bw_config) {
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_ + ":" + std::to_string(id));
+        barrier_mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name + ":" + std::to_string(id) + ":barrier");
     }
 
     void DoJob();
@@ -69,8 +71,9 @@ private:
     int worker_host_num_;
     std::vector<std::string> worker_host_names_;
     std::vector<int> worker_partener_ids_;
-    simgrid::s4u::Mailbox* mailbox_;         // receive message from master
-    simgrid::s4u::Mailbox* master_mailbox_;  // send message to master
+    simgrid::s4u::Mailbox* mailbox_;          // receive message from master
+    simgrid::s4u::Mailbox* master_mailbox_;   // send message to master
+    simgrid::s4u::Mailbox* barrier_mailbox_;  // for barrier
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
 
@@ -107,8 +110,8 @@ public:
           bw_config_(bw_config) {
         assert(worker_host_num == worker_host_names_.size());
         for (int i = 0; i < worker_num; i++) {
-            workers_.emplace_back(
-                std::make_shared<Worker>(my_host_name, master_host_name, worker_host_num, worker_host_names, i, id, bw_config));
+            workers_.emplace_back(std::make_shared<Worker>(my_host_name, master_host_name, worker_host_num,
+                                                           worker_host_names, i, id, bw_config));
         }
 
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_);

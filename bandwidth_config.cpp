@@ -13,7 +13,6 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
     if (!input.is_open()) {
         assert(false && "could open bandwidth config file");
     }
-    LOG_INFO("[BandWidthConfigModule] bw info:\ttime\t\tm_w_bw\t\tw_w_bw\t\tbroadcast_bw");
     while (std::getline(input, line)) {
         std::istringstream iss(line);
         std::vector<double> temp;
@@ -23,7 +22,6 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
         }
         assert(temp.size() == 4);
         bw_config_.push_back({temp[0], temp[1], temp[2], temp[3]});
-        LOG_INFO("[BandWidthConfigModule] \t\t%lf\t%lf\t%lf\t%lf", temp[0], temp[1], temp[2], temp[3]);
     }
 
     input.close();

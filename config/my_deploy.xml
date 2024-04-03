@@ -5,10 +5,13 @@
   <actor host="node0" function="my_master">
     <!-- name of hosts on which the workers are running -->
     <argument value="5" />              <!-- master num of master node -->
-    <argument value="3" />              <!-- worker host num -->
+    <argument value="6" />              <!-- worker host num -->
     <argument value="node1" />
     <argument value="node2" />
     <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
   </actor>
   <!-- The worker actors (with no argument) -->
   <actor host="node1" function="my_worker">
@@ -18,6 +21,9 @@
     <argument value="node1" />
     <argument value="node2" />
     <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
   </actor>
   <actor host="node2" function="my_worker">
     <argument value="node0" />          <!-- host name of master -->
@@ -26,6 +32,9 @@
     <argument value="node1" />
     <argument value="node2" />
     <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
   </actor>
   <actor host="node3" function="my_worker">
     <argument value="node0" />          <!-- host name of master -->
@@ -34,5 +43,41 @@
     <argument value="node1" />
     <argument value="node2" />
     <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
+  </actor>
+  <actor host="node4" function="my_worker">
+    <argument value="node0" />          <!-- host name of master -->
+    <argument value="5" />              <!-- num of workers in a worker node -->
+    <argument value="4" />              <!-- worker host id -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
+  </actor>
+  <actor host="node5" function="my_worker">
+    <argument value="node0" />          <!-- host name of master -->
+    <argument value="5" />              <!-- num of workers in a worker node -->
+    <argument value="5" />              <!-- worker host id -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
+  </actor>
+  <actor host="node6" function="my_worker">
+    <argument value="node0" />          <!-- host name of master -->
+    <argument value="5" />              <!-- num of workers in a worker node -->
+    <argument value="6" />              <!-- worker host id -->
+    <argument value="node1" />
+    <argument value="node2" />
+    <argument value="node3" />
+    <argument value="node4" />
+    <argument value="node5" />
+    <argument value="node6" />
   </actor>
 </platform>

@@ -67,8 +67,6 @@ int main(int argc, char* argv[]) {
     e.register_function("my_worker", &my_worker);
 
     /* Load the platform description and then deploy the application */
-    LOG_INFO("platform: %s", argv[1]);
-    LOG_INFO("deployment: %s", argv[2]);
     e.load_platform(argv[1]);
     e.load_deployment(argv[2]);
 
