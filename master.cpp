@@ -96,8 +96,17 @@ void Master::DoJob(std::vector<int> worker_ids) {
     }
 
     // 2. do job
+    LOG_INFO("job_type: %s", JobTypeToString(job_text_.type).c_str());
+    switch(job_text_.type) {
+        case JobType::TeraSort:
+            TeraSort();
+            break;
+        case JobType::CodedTeraSort:
+            CodedTeraSort();
+            break;
+    }
     // TeraSort();
-    CodedTeraSort();
+    // CodedTeraSort();
 }
 
 /**
@@ -122,4 +131,23 @@ UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
     CodedTeraSort();
 
     return {-1, -1, -1};
+}
+
+JobType StringToJobType(const std::string& str) {
+    if(str == "TeraSort") {
+        return JobType::TeraSort;
+    } else if(str == "CodedTeraSort") {
+        return JobType::CodedTeraSort;
+    } else {
+        assert(false && "undefined JobType");
+    }
+}
+
+std::string JobTypeToString(const JobType& job_type) {
+    switch(job_type) {
+        case JobType::TeraSort:
+            return "TeraSort";
+        case JobType::CodedTeraSort:
+            return "CodedTeraSort";
+    }
 }

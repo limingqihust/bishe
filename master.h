@@ -5,13 +5,17 @@
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
 enum class MasterState { Free, Mapping, Reducing };
-
+enum class JobType { TeraSort, CodedTeraSort };
 struct MasterJobText {
-    std::string job_name;
-    int input_file_nums;
-    int worker_nums;
-    std::vector<std::string> input_file_names_;
+    JobType type;               // TeraSort or CodedTeraSort
+    int input_file_num;             // num of file assigned to worker
+    int reducer_num;                // num of reducers
+    int r;                          // specified by master_manager/online_learning_module
+    std::string input_file_prefix;  // prefix of input file
 };
+
+JobType StringToJobType(const std::string& str);
+std::string JobTypeToString(const JobType& job_type);
 
 struct UtilityInfo {
     double time;
@@ -33,6 +37,7 @@ public:
           worker_host_names_(worker_host_names),
           bw_config_(bw_config) {
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name + ":" + std::to_string(id));
+        barrier_mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name + ":" + std::to_string(id) + ":barrier");
     }
 
     // 初始化该master需要执行的job
@@ -61,6 +66,7 @@ private:
     std::vector<std::string> worker_host_names_;               // record all worker host name
     std::vector<simgrid::s4u::Mailbox*> worker_mailboxs_;      // send info to worker managers
     simgrid::s4u::Mailbox* mailbox_;                           // receive data
+    simgrid::s4u::Mailbox* barrier_mailbox_;                   // receive barrier info from worker 
     std::vector<simgrid::s4u::Mailbox*> worker_job_mailboxs_;  // worker mailbox responsible for this job
     Configuration conf;
     CodedConfiguration coded_conf;

@@ -34,8 +34,7 @@ static void my_master(std::vector<std::string> args) {
     // });
 
     // do job now
-    MasterJobText job_text;
-    master_manager->Run(job_text);
+    master_manager->Run(job_queue->Pop());
     while (true) {
         sleep(1);
     }

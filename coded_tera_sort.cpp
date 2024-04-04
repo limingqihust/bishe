@@ -19,7 +19,7 @@ void Master::CodedTeraSort() {
         for (auto worker_mailbox : worker_mailboxs_) {
             unsigned char* partition = new unsigned char[coded_conf.getKeySize() + 1];
             memcpy(partition, *it, coded_conf.getKeySize() + 1);
-            worker_mailbox->put(partition, coded_conf.getKeySize() + 1);
+            Send(worker_mailbox, bw_config_->GetBW(BWType::M_W), partition, coded_conf.getKeySize() + 1);
         }
     }
 
@@ -36,7 +36,7 @@ void Master::CodedTeraSort() {
     std::cout << "[master] CODEGEN     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10)
               << maxTime << endl;
     for (auto mailbox : worker_mailboxs_) {
-        mailbox->put(new unsigned char, sizeof(unsigned char));
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
 
     // COMPUTE MAP TIME
@@ -51,7 +51,7 @@ void Master::CodedTeraSort() {
     std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
     for (auto mailbox : worker_mailboxs_) {
-        mailbox->put(new unsigned char, sizeof(unsigned char));
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
 
     // COMPUTE ENCODE TIME
@@ -66,7 +66,7 @@ void Master::CodedTeraSort() {
     std::cout << "[master] ENCODE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
     for (auto mailbox : worker_mailboxs_) {
-        mailbox->put(new unsigned char, sizeof(unsigned char));
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
 
     // COMPUTE SHUFFLE TIME
@@ -74,20 +74,26 @@ void Master::CodedTeraSort() {
     maxTime = 0;
     for (auto mailbox : worker_mailboxs_) {
         // notify worker i to send data
-        auto shuffle_start = std::chrono::high_resolution_clock::now();
         auto barrier_mailbox = simgrid::s4u::Mailbox::by_name(mailbox->get_name() + ":barrier");
-        barrier_mailbox->put(new unsigned char, sizeof(unsigned char));
+        Send(barrier_mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
         // wait for all worker receive data done
         for (int i = 0; i < worker_host_num_; i++) {
-            delete mailbox_->get<unsigned char>();
+            delete barrier_mailbox_->get<unsigned char>();
         }
-        auto shuffle_end = std::chrono::high_resolution_clock::now();
-        double rTime = std::chrono::duration_cast<std::chrono::duration<double>>(shuffle_end - shuffle_start).count();
-        avgTime += rTime;
-        maxTime = max(maxTime, rTime);
+    }
+    avgTime = 0;
+    maxTime = 0;
+    for (int i = 1; i <= numWorker; i++) {
+        double* time = mailbox_->get<double>();
+        avgTime += *time;
+        maxTime = max(maxTime, *time);
+        delete time;
     }
     std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
+    for (auto mailbox : worker_mailboxs_) {
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
+    }
 
     // COMPUTE DECODE TIME
     avgTime = 0;
@@ -101,7 +107,7 @@ void Master::CodedTeraSort() {
     std::cout << "[master] DECODE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
     for (auto mailbox : worker_mailboxs_) {
-        mailbox->put(new unsigned char, sizeof(unsigned char));
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
 
     // COMPUTE REDUCE TIME
@@ -141,7 +147,7 @@ void Worker::CodedTeraSort() {
     GenMulticastGroup();
     auto codegen_end = std::chrono::high_resolution_clock::now();
     auto rTime = std::chrono::duration_cast<std::chrono::duration<double>>(codegen_end - codegen_start).count();
-    master_mailbox_->put(new double(rTime), sizeof(double));
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
     // EXECUTE MAP PHASE
@@ -149,36 +155,38 @@ void Worker::CodedTeraSort() {
     ExecCodedMap();
     auto map_end = std::chrono::high_resolution_clock::now();
     rTime = std::chrono::duration_cast<std::chrono::duration<double>>(map_end - map_start).count();
-    master_mailbox_->put(new double(rTime), sizeof(double));
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
     // EXECTUTE ENCODE PHASE
     auto encode_start = std::chrono::high_resolution_clock::now();
     ExecCodedEncoding();
     auto encode_end = std::chrono::high_resolution_clock::now();
-    rTime = std::chrono::duration_cast<std::chrono::duration<double>>(map_end - map_start).count();
-    master_mailbox_->put(new double(rTime), sizeof(double));
+    rTime = std::chrono::duration_cast<std::chrono::duration<double>>(encode_end - encode_start).count();
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
-    // EXECTUTE ENCODE PHASE
+    // EXECTUTE SHUFFLE PHASE
     ExecCodedShuffle();
+    delete mailbox_->get<unsigned char>();
 
-    // EXECTUTE ENCODE PHASE
+
+    // EXECTUTE DECODE PHASE
     auto decode_start = std::chrono::high_resolution_clock::now();
     ExecCodedDecoding();
     auto decode_end = std::chrono::high_resolution_clock::now();
-    rTime = std::chrono::duration_cast<std::chrono::duration<double>>(map_end - map_start).count();
-    master_mailbox_->put(new double(rTime), sizeof(double));
+    rTime = std::chrono::duration_cast<std::chrono::duration<double>>(decode_end - decode_start).count();
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
-    // EXECTUTE ENCODE PHASE
+    // EXECTUTE REDUCE PHASE
     auto reduce_start = std::chrono::high_resolution_clock::now();
     ExecCodedReduce();
     auto reduce_end = std::chrono::high_resolution_clock::now();
     rTime = std::chrono::duration_cast<std::chrono::duration<double>>(reduce_end - reduce_start).count();
-    master_mailbox_->put(new double(rTime), sizeof(double));
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
 
-    PrintLocalList();
+    // PrintLocalList();
 }
 
 void Worker::GenMulticastGroup() {
@@ -421,6 +429,7 @@ void Worker::ExecCodedShuffle() {
     // NODE-BY-NODE
     clock_t time;
     //map< NodeSet, SubsetSId > ssmap = cg->getSubsetSIdMap();
+    double shuffle_start = simgrid::s4u::Engine::get_clock();
     for (unsigned int activeId = 1; activeId <= coded_conf->getNumReducer(); activeId++) {
         // delete mailbox_->get<unsigned char>();
         if(activeId == host_id_) {
@@ -442,12 +451,12 @@ void Worker::ExecCodedShuffle() {
                 for(auto node : ns) {
                     node_set.push_back(node);
                 }
-                LOG_INFO("worker: %d send data, node_set: ", host_id_);
-                std::cout << "{";
-                for(auto node : ns) {
-                    std::cout << node << " ";
-                }
-                std::cout << "}" << std::endl;
+                // LOG_INFO("worker: %d send data, node_set: ", host_id_);
+                // std::cout << "{";
+                // for(auto node : ns) {
+                //     std::cout << node << " ";
+                // }
+                // std::cout << "}" << std::endl;
 
                 SendEncodeData(encodeDataSend[nsid], node_set);
                 EnData& endata = encodeDataSend[nsid];
@@ -461,20 +470,24 @@ void Worker::ExecCodedShuffle() {
                     rootId++;
                 }
                 RecvEncodeData(nsid);
-                LOG_INFO("worker: %d receive data, node_set: ", host_id_);
-                std::cout << "{";
-                for(auto node : ns) {
-                    std::cout << node << " ";
-                }
-                std::cout << "}" << std::endl;
+                // LOG_INFO("worker: %d receive data, node_set: ", host_id_);
+                // std::cout << "{";
+                // for(auto node : ns) {
+                //     std::cout << node << " ";
+                // }
+                // std::cout << "}" << std::endl;
                 // receive data done
             }
         }
 
         // Active node should stop timer here
-        master_mailbox_->put(new unsigned char, sizeof(unsigned char));
+        auto barrier_master_mailbox_ = simgrid::s4u::Mailbox::by_name(master_mailbox_->get_name() + ":barrier");
+        Send(barrier_master_mailbox_, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
         // MPI_Barrier(workerComm);
     }
+    double shuffle_end = simgrid::s4u::Engine::get_clock();
+    double shuffle_time = shuffle_end - shuffle_start;
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_time), sizeof(double));
 }
 
 void Worker::ExecCodedDecoding() {
@@ -591,10 +604,10 @@ void Worker::SendEncodeData(EnData& endata, std::vector<int> dst_ids) {
             continue;
         }
         auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" + std::to_string(worker_partener_ids_[id - 1]));
-        mailbox->put(new unsigned long long(endata.size), sizeof(unsigned long long));
+        Send(mailbox, bw_config_->GetBW(BWType::BRAODCAST), new unsigned long long(endata.size), sizeof(unsigned long long));
         unsigned char* data_temp = new unsigned char [endata.size * lineSize];
         memcpy(data_temp, endata.data, endata.size * lineSize);
-        mailbox->put(data_temp, endata.size * lineSize);
+        Send(mailbox, bw_config_->GetBW(BWType::BRAODCAST), data_temp, endata.size * lineSize);
     }
     delete[] endata.data;
 

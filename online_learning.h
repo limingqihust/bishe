@@ -3,51 +3,7 @@
 #include <deque>
 #include <memory>
 #include "master.h"
-
-class ConcurrencyQueue {
-public:
-    ConcurrencyQueue(const std::string& input_file_path) {
-        std::ifstream input(input_file_path);
-        if (!input.is_open()) {
-            LOG_ERROR("open file:%s fail", input_file_path.c_str());
-            assert(false);
-        }
-        std::string token;
-        while (std::getline(input, token)) {
-            LOG_INFO("[ConcurrencyQueue] push job: %s", token.c_str());
-            queue_.push_back({token});
-        }
-    }
-
-    ~ConcurrencyQueue() {}
-
-    void Put(const MasterJobText& master_job_text) {
-        mutex_.lock();
-        queue_.push_back(master_job_text);
-        mutex_.unlock();
-    }
-
-    MasterJobText Pop() {
-        while (true) {
-            mutex_.lock();
-            if (queue_.size() != 0) {
-                MasterJobText res = queue_.front();
-                queue_.pop_front();
-                mutex_.unlock();
-                return res;
-            } else {
-                LOG_WARN("[ConcurrencyQueue] queue is empty, wait for master_job_text");
-                mutex_.unlock();
-                sleep(1);
-            }
-        }
-    }
-
-private:
-    std::deque<MasterJobText> queue_;
-    std::mutex mutex_;
-};
-
+#include "concurrency_queue.h"
 /**
  * do a/b test every a interval
  * created by my_master

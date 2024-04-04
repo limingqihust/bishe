@@ -4,6 +4,7 @@
  * under the terms of the license (GNU LGPL) which comes with this package. */
 
 #include <simgrid/s4u.hpp>
+#include <iostream>
 namespace sg4 = simgrid::s4u;
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(s4u_comm_throttling, "Messages specific for this s4u example");

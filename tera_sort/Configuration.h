@@ -14,7 +14,7 @@ class Configuration {
   
  public:
   Configuration() {
-    numReducer = 3;
+    numReducer = 6;
     numInput = numReducer;    
     
     strcpy(inputPath, "./Input/Input10000");
