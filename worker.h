@@ -6,6 +6,7 @@
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
 #include "tera_sort/Trie.h"
+#include "job_text.h"
 enum class WorkerState { Free, Mapping, Reducing };
 
 /**
@@ -38,6 +39,8 @@ public:
     void SetMasterMailbox(int master_id) {
         master_mailbox_ = simgrid::s4u::Mailbox::by_name(master_host_name_ + ":" + std::to_string(master_id));
     }
+
+    void SetJobText(const JobText& job_text) { job_text_ = job_text; }
 
     NodeSetDataPartMap encodePreData;
     NodeSetDataPartMap decodePreData;
@@ -74,6 +77,7 @@ private:
     simgrid::s4u::Mailbox* mailbox_;          // receive message from master
     simgrid::s4u::Mailbox* master_mailbox_;   // send message to master
     simgrid::s4u::Mailbox* barrier_mailbox_;  // for barrier
+    JobText job_text_;                        // job info which this worker need to do
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
 

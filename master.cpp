@@ -3,7 +3,7 @@
 /**
  * called when master node receive a job
  */
-void MasterManager::Run(MasterJobText job_text) {
+void MasterManager::Run(JobText job_text) {
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
     LOG_INFO("[master manager] choose id: %d to do job", master_id);
@@ -11,7 +11,7 @@ void MasterManager::Run(MasterJobText job_text) {
     masters_[master_id]->SetJobText(job_text);
 
     // 3. let master to this job(return directly, free resources when job done automatically)
-    masters_[master_id]->DoJob(RequestWorkerIds(master_id));
+    masters_[master_id]->DoJob(RequestWorkerIds(master_id, job_text));
 }
 
 /**
@@ -33,12 +33,15 @@ int MasterManager::FindFreeMaster() {
     }
 }
 
-std::vector<int> MasterManager::RequestWorkerIds(int master_id) {
+std::vector<int> MasterManager::RequestWorkerIds(int master_id, const JobText& job_text) {
     std::vector<int> worker_ids;
     for(int i = 0; i < worker_host_num_; i++) {
         auto mailbox = worker_host_mailboxs_[i];
-        // send master_id to worker manager, meaning a request to worker manager and notify master_id to it
-        mailbox->put(new int(master_id), 4);
+        // send master_id and job_text to worker manager, meaning a request to worker manager and notify master_id, job_text to it
+        const std::string info = JobTextToString(master_id, job_text);
+        char* temp = new char [info.size()];
+        strcpy(temp, info.c_str());
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());
         
         // record worker_id
         int* worker_id_info = mailbox_->get<int>();
@@ -60,7 +63,7 @@ void MasterManager::SetR(int r) {
 /**
  * do micro experient with parameter r, return UtilityInfo
 */
-UtilityInfo MasterManager::RunTryR(MasterJobText job, int r) {
+UtilityInfo MasterManager::RunTryR(JobText job, int r) {
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
     LOG_INFO("[master manager] choose id: %d to do job", master_id);
@@ -68,7 +71,7 @@ UtilityInfo MasterManager::RunTryR(MasterJobText job, int r) {
     masters_[master_id]->SetJobText(job);
 
     // 3. let master to this job(return directly, free resources when job done automatically)
-    return masters_[master_id]->DoJobTryR(RequestWorkerIds(master_id), r);
+    return masters_[master_id]->DoJobTryR(RequestWorkerIds(master_id, job), r);
 
     return {-1, -1, -1};
 }
@@ -96,7 +99,6 @@ void Master::DoJob(std::vector<int> worker_ids) {
     }
 
     // 2. do job
-    LOG_INFO("job_type: %s", JobTypeToString(job_text_.type).c_str());
     switch(job_text_.type) {
         case JobType::TeraSort:
             TeraSort();
@@ -105,8 +107,6 @@ void Master::DoJob(std::vector<int> worker_ids) {
             CodedTeraSort();
             break;
     }
-    // TeraSort();
-    // CodedTeraSort();
 }
 
 /**
@@ -131,23 +131,4 @@ UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
     CodedTeraSort();
 
     return {-1, -1, -1};
-}
-
-JobType StringToJobType(const std::string& str) {
-    if(str == "TeraSort") {
-        return JobType::TeraSort;
-    } else if(str == "CodedTeraSort") {
-        return JobType::CodedTeraSort;
-    } else {
-        assert(false && "undefined JobType");
-    }
-}
-
-std::string JobTypeToString(const JobType& job_type) {
-    switch(job_type) {
-        case JobType::TeraSort:
-            return "TeraSort";
-        case JobType::CodedTeraSort:
-            return "CodedTeraSort";
-    }
 }

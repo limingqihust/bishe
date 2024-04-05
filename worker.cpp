@@ -6,16 +6,22 @@
 void WorkerManager::Run() {
     while (true) {
         // 1. receive a request from master
-        int* master_id = mailbox_->get<int>();
-        LOG_INFO("[worker manager] id: %d, receive master_id: %d request for worker", id_, *master_id);
+        char* temp = mailbox_->get<char>();
+        std::string info(temp);
+        delete temp;
+        int master_id;
+        JobText job_text = StringToJobText(master_id, info);
+
+
+        LOG_INFO("[worker manager] id: %d, receive master_id: %d request for worker", id_, master_id);
         // 2. find a free worker responsible for this job
         int worker_id = FindFreeWorker();
-        workers_[worker_id]->SetMasterMailbox(*master_id);
+        workers_[worker_id]->SetMasterMailbox(master_id);
+        workers_[worker_id]->SetJobText(job_text);
         // 3. notify worker id to master
         auto master_mailbox = simgrid::s4u::Mailbox::by_name(master_host_name_);
         master_mailbox->put(new int(worker_id), 4);
         LOG_INFO("[worker manager] choose worker id: %d, notify master manager", id_);
-        delete master_id;
 
         // 4. let this worker to do job(including map task, shuffle task and reduce task)
         workers_[worker_id]->DoJob();
@@ -49,8 +55,15 @@ void Worker::DoJob() {
         worker_partener_ids_.push_back(worker_partener_ids_temp[i]);
     }
     delete[] worker_partener_ids_temp;
-    TeraSort();
-    // CodedTeraSort();
+
+    switch(job_text_.type) {
+        case JobType::TeraSort:
+            TeraSort();
+            break;
+        case JobType::CodedTeraSort:
+            CodedTeraSort();
+            break;
+    }
 }
 
 

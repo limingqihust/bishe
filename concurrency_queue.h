@@ -16,7 +16,7 @@ public:
         }
         std::string line;
         while (std::getline(input, line)) {
-            MasterJobText job;
+            JobText job;
             std::stringstream ss(line);
             std::string job_type;
             ss >> job_type >> job.input_file_num >> job.reducer_num >> job.r >> job.input_file_prefix;
@@ -27,17 +27,17 @@ public:
 
     ~ConcurrencyQueue() {}
 
-    void Push(const MasterJobText& master_job_text) {
+    void Push(const JobText& master_job_text) {
         mutex_.lock();
         queue_.push_back(master_job_text);
         mutex_.unlock();
     }
 
-    MasterJobText Pop() {
+    JobText Pop() {
         while (true) {
             mutex_.lock();
             if (queue_.size() != 0) {
-                MasterJobText res = queue_.front();
+                JobText res = queue_.front();
                 queue_.pop_front();
                 mutex_.unlock();
                 return res;
@@ -50,6 +50,6 @@ public:
     }
 
 private:
-    std::deque<MasterJobText> queue_;
+    std::deque<JobText> queue_;
     std::mutex mutex_;
 };

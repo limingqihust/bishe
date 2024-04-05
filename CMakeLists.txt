@@ -29,7 +29,8 @@ add_executable(my_master_workers
     "tera_sort.cpp" 
     "coded_tera_sort.cpp"
     "online_learning.cpp"
-    "bandwidth_config.cpp")
+    "bandwidth_config.cpp"
+    "job_text.cpp")
 target_link_libraries(my_master_workers ${SimGrid_LIBRARY})
 
 add_executable(comm_demo comm_demo.cpp)

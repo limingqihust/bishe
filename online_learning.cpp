@@ -18,8 +18,8 @@ void OnlineLearningModule::DoWork() {
  * 
 */
 void OnlineLearningModule::DoMicroExperient() {
-    std::pair<MasterJobText, MasterJobText> laba = {job_queue_->Pop(), job_queue_->Pop()};
-    std::pair<MasterJobText, MasterJobText> labb = {job_queue_->Pop(), job_queue_->Pop()};
+    std::pair<JobText, JobText> laba = {job_queue_->Pop(), job_queue_->Pop()};
+    std::pair<JobText, JobText> labb = {job_queue_->Pop(), job_queue_->Pop()};
     std::thread thd_a, thd_b;
     std::pair<UtilityInfo, UtilityInfo> utility_1;  // utility of first a/b test
     std::pair<UtilityInfo, UtilityInfo> utility_2;  // utility of second a/b test

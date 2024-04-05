@@ -4,18 +4,8 @@
 #include "tera_sort/CodedConfiguration.h"
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
+#include "job_text.h"
 enum class MasterState { Free, Mapping, Reducing };
-enum class JobType { TeraSort, CodedTeraSort };
-struct MasterJobText {
-    JobType type;               // TeraSort or CodedTeraSort
-    int input_file_num;             // num of file assigned to worker
-    int reducer_num;                // num of reducers
-    int r;                          // specified by master_manager/online_learning_module
-    std::string input_file_prefix;  // prefix of input file
-};
-
-JobType StringToJobType(const std::string& str);
-std::string JobTypeToString(const JobType& job_type);
 
 struct UtilityInfo {
     double time;
@@ -41,7 +31,7 @@ public:
     }
 
     // 初始化该master需要执行的job
-    void SetJobText(MasterJobText job_text) { job_text_ = job_text; };
+    void SetJobText(JobText job_text) { job_text_ = job_text; };
 
     // 被MasterManager调用，接收一个Job
     void DoJob(std::vector<int> worker_ids);
@@ -60,7 +50,7 @@ private:
 
     MasterState state_;
     int id_;
-    MasterJobText job_text_;
+    JobText job_text_;
     std::string my_host_name_;  // name of master node
     int worker_host_num_;
     std::vector<std::string> worker_host_names_;               // record all worker host name
@@ -95,13 +85,13 @@ public:
     }
 
     // receive a job, alloc a master to execute this job
-    void Run(MasterJobText job_text);
+    void Run(JobText job_text);
     void SetR(int r);
-    UtilityInfo RunTryR(MasterJobText job, int r);
+    UtilityInfo RunTryR(JobText job, int r);
 
 private:
     int FindFreeMaster();
-    std::vector<int> RequestWorkerIds(int master_id);
+    std::vector<int> RequestWorkerIds(int master_id, const JobText& job_text);
 
     int master_num_;                                            // num of master in this master host
     int worker_host_num_;                                       // num of worker host

@@ -186,7 +186,7 @@ void Worker::CodedTeraSort() {
     rTime = std::chrono::duration_cast<std::chrono::duration<double>>(reduce_end - reduce_start).count();
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
 
-    // PrintLocalList();
+    PrintLocalList();
 }
 
 void Worker::GenMulticastGroup() {
@@ -432,7 +432,7 @@ void Worker::ExecCodedShuffle() {
     double shuffle_start = simgrid::s4u::Engine::get_clock();
     for (unsigned int activeId = 1; activeId <= coded_conf->getNumReducer(); activeId++) {
         // delete mailbox_->get<unsigned char>();
-        if(activeId == host_id_) {
+        if (activeId == host_id_) {
             delete barrier_mailbox_->get<unsigned char>();
         }
         vector<NodeSet>& vset = cg->getNodeSubsetSContain(activeId);
@@ -448,7 +448,7 @@ void Worker::ExecCodedShuffle() {
             // MPI_Comm mcComm = multicastGroupMap[nsid];
             if (host_id_ == activeId) {
                 std::vector<int> node_set;
-                for(auto node : ns) {
+                for (auto node : ns) {
                     node_set.push_back(node);
                 }
                 // LOG_INFO("worker: %d send data, node_set: ", host_id_);
@@ -599,13 +599,15 @@ void Worker::SendEncodeData(EnData& endata, std::vector<int> dst_ids) {
     // MPI_Comm_rank(comm, &rootId);
     // MPI_Bcast(&(endata.size), 1, MPI_UNSIGNED_LONG_LONG, rootId, comm);
     // MPI_Bcast(endata.data, endata.size * lineSize, MPI_UNSIGNED_CHAR, rootId, comm);
-    for(auto id : dst_ids) {
-        if(id == host_id_) {
+    for (auto id : dst_ids) {
+        if (id == host_id_) {
             continue;
         }
-        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" + std::to_string(worker_partener_ids_[id - 1]));
-        Send(mailbox, bw_config_->GetBW(BWType::BRAODCAST), new unsigned long long(endata.size), sizeof(unsigned long long));
-        unsigned char* data_temp = new unsigned char [endata.size * lineSize];
+        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" +
+                                                      std::to_string(worker_partener_ids_[id - 1]));
+        Send(mailbox, bw_config_->GetBW(BWType::BRAODCAST), new unsigned long long(endata.size),
+             sizeof(unsigned long long));
+        unsigned char* data_temp = new unsigned char[endata.size * lineSize];
         memcpy(data_temp, endata.data, endata.size * lineSize);
         Send(mailbox, bw_config_->GetBW(BWType::BRAODCAST), data_temp, endata.size * lineSize);
     }
@@ -614,13 +616,14 @@ void Worker::SendEncodeData(EnData& endata, std::vector<int> dst_ids) {
     // Send serialized meta data
     // MPI_Bcast(&(endata.metaSize), 1, MPI_UNSIGNED_LONG_LONG, rootId, comm);
     // MPI_Bcast(endata.serialMeta, endata.metaSize, MPI_UNSIGNED_CHAR, rootId, comm);
-    for(auto id : dst_ids) {
-        if(id == host_id_) {
+    for (auto id : dst_ids) {
+        if (id == host_id_) {
             continue;
         }
-        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" + std::to_string(worker_partener_ids_[id - 1]));
+        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" +
+                                                      std::to_string(worker_partener_ids_[id - 1]));
         mailbox->put(new unsigned long long(endata.metaSize), sizeof(unsigned long long));
-        unsigned char* data_temp = new unsigned char [endata.metaSize];
+        unsigned char* data_temp = new unsigned char[endata.metaSize];
         memcpy(data_temp, endata.serialMeta, endata.metaSize);
         mailbox->put(data_temp, endata.metaSize);
     }
@@ -639,24 +642,24 @@ void Worker::RecvEncodeData(SubsetSId nsid) {
     unsigned long long* endata_size_temp = mailbox_->get<unsigned long long>();
     endata.size = *endata_size_temp;
     delete endata_size_temp;
-    
+
     endata.data = new unsigned char[endata.size * lineSize];
     // MPI_Bcast(endata.data, endata.size * lineSize, MPI_UNSIGNED_CHAR, rootId, comm);
     unsigned char* data_temp = mailbox_->get<unsigned char>();
     memcpy(endata.data, data_temp, endata.size * lineSize);
-    delete [] data_temp;
+    delete[] data_temp;
 
     // Receive serialized meta data
     // MPI_Bcast(&(endata.metaSize), 1, MPI_UNSIGNED_LONG_LONG, rootId, comm);
     unsigned long long* endata_meta_size = mailbox_->get<unsigned long long>();
     endata.metaSize = *endata_meta_size;
     delete endata_meta_size;
-    
+
     endata.serialMeta = new unsigned char[endata.metaSize];
     // MPI_Bcast((unsigned char*)endata.serialMeta, endata.metaSize, MPI_UNSIGNED_CHAR, rootId, comm);
     unsigned char* serial_meta_temp = mailbox_->get<unsigned char>();
     memcpy(endata.serialMeta, serial_meta_temp, endata.metaSize);
-    delete [] serial_meta_temp;
+    delete[] serial_meta_temp;
 
     // De-serialized meta data
     unsigned char* p = endata.serialMeta;
@@ -705,14 +708,12 @@ void Worker::RecvEncodeData(SubsetSId nsid) {
     encodeDataRecv[nsid].push_back(endata);
 }
 
-
-
 void Worker::PrintInputPartitionCollection() {
     LOG_INFO("[worker] host_id: %d, print inputPartitionCollection", host_id_);
-    for(auto it : inputPartitionCollection) {
+    for (auto it : inputPartitionCollection) {
         std::cout << "inputId: " << it.first << std::endl;
-        for(auto iter : it.second) {
-            for(auto it1 = iter.second->begin(); it1 != iter.second->end(); it1++) {
+        for (auto iter : it.second) {
+            for (auto it1 = iter.second->begin(); it1 != iter.second->end(); it1++) {
                 std::cout << "src: " << host_id_ << " dst: " << iter.first + 1 << " ";
                 printKey(*it1, coded_conf->getKeySize());
                 std::cout << std::endl;

@@ -215,7 +215,7 @@ void Worker::TeraSort() {
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
-    // PrintLocalList();
+    PrintLocalList();
 }
 
 void Worker::ExecMap() {
