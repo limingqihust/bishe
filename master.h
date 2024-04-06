@@ -1,11 +1,12 @@
 #pragma once
+#include <thread>
 #include "bandwidth_config.h"
 #include "common.h"
 #include "tera_sort/CodedConfiguration.h"
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
 #include "job_text.h"
-enum class MasterState { Free, Mapping, Reducing };
+enum class MasterState { Free, Mapping, Reducing, Done };
 
 struct UtilityInfo {
     double time;
@@ -34,7 +35,7 @@ public:
     void SetJobText(JobText job_text) { job_text_ = job_text; };
 
     // 被MasterManager调用，接收一个Job
-    void DoJob(std::vector<int> worker_ids);
+    void DoJob(const std::vector<int>& worker_ids);
 
     UtilityInfo DoJobTryR(std::vector<int> worker_ids, int r);
 
@@ -77,6 +78,7 @@ public:
         for (int i = 0; i < master_num; i++) {
             masters_.emplace_back(
                 std::make_shared<Master>(i, my_host_name, worker_host_num, worker_host_names, bw_config));
+            master_thds_.emplace_back(std::thread());
         }
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_);
         for (auto worker_host_name : worker_host_names_) {
@@ -99,8 +101,9 @@ private:
     std::vector<std::string> worker_host_names_;                // name of worker hosts
     simgrid::s4u::Mailbox* mailbox_;                            // receive message from worker manager
     std::vector<simgrid::s4u::Mailbox*> worker_host_mailboxs_;  // communicate with worker managers
-    std::mutex mutex_;
+    std::mutex mutex_;                                          // lock before modify master state
     std::vector<std::shared_ptr<Master>> masters_;
+    std::vector<std::thread> master_thds_;
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
 };

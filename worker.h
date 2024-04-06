@@ -1,4 +1,5 @@
 #pragma once
+#include <thread>
 #include "bandwidth_config.h"
 #include "common.h"
 #include "tera_sort/CodeGeneration.h"
@@ -7,7 +8,7 @@
 #include "tera_sort/PartitionSampling.h"
 #include "tera_sort/Trie.h"
 #include "job_text.h"
-enum class WorkerState { Free, Mapping, Reducing };
+enum class WorkerState { Free, Mapping, Reducing, DONE };
 
 /**
  * 被分配给一个job
@@ -116,6 +117,7 @@ public:
         for (int i = 0; i < worker_num; i++) {
             workers_.emplace_back(std::make_shared<Worker>(my_host_name, master_host_name, worker_host_num,
                                                            worker_host_names, i, id, bw_config));
+            worker_thds_.emplace_back(std::thread());
         }
 
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_);
@@ -131,8 +133,9 @@ private:
     int worker_num_;
     std::vector<std::string> worker_host_names_;
     int id_;
-    std::mutex mutex_;
+    std::mutex mutex_;              // need to lock mutex_ before request worker(modify worker state)
     std::vector<std::shared_ptr<Worker>> workers_;
+    std::vector<std::thread> worker_thds_;
     simgrid::s4u::Mailbox* mailbox_;              // receive message from master manager
     simgrid::s4u::Mailbox* master_host_mailbox_;  // send message to master manager
 

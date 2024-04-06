@@ -6,26 +6,26 @@
 void WorkerManager::Run() {
     while (true) {
         // 1. receive a request from master
+        LOG_INFO("[worker manager] my_host_name: %s wait for request from mailbox: %s", my_host_name_.c_str(), mailbox_->get_cname());
         char* temp = mailbox_->get<char>();
+        LOG_INFO("[worker manager] my_host_name: %s receive request from master in mailbox:%s", my_host_name_.c_str(), mailbox_->get_cname());
         std::string info(temp);
-        delete temp;
+        delete [] temp;
         int master_id;
         JobText job_text = StringToJobText(master_id, info);
 
 
-        LOG_INFO("[worker manager] id: %d, receive master_id: %d request for worker", id_, master_id);
         // 2. find a free worker responsible for this job
         int worker_id = FindFreeWorker();
         workers_[worker_id]->SetMasterMailbox(master_id);
         workers_[worker_id]->SetJobText(job_text);
         // 3. notify worker id to master
         auto master_mailbox = simgrid::s4u::Mailbox::by_name(master_host_name_);
+        LOG_INFO("[worker manager] host_name: %s choose worker id: %d, notify to mailbox: %s", my_host_name_.c_str(), worker_id, master_mailbox->get_cname());
         master_mailbox->put(new int(worker_id), 4);
-        LOG_INFO("[worker manager] choose worker id: %d, notify master manager", id_);
 
         // 4. let this worker to do job(including map task, shuffle task and reduce task)
         workers_[worker_id]->DoJob();
-        return;
     }
 }
 
@@ -34,6 +34,12 @@ int WorkerManager::FindFreeWorker() {
         mutex_.lock();
         for (int i = 0; i < worker_num_; i++) {
             if (workers_[i]->GetWorkerState() == WorkerState::Free) {
+                workers_[i]->SetWorkerState(WorkerState::Mapping);
+                mutex_.unlock();
+                return i;
+            } else if(workers_[i]->GetWorkerState() == WorkerState::DONE) {
+                // free it
+                // worker_thds_[i].join();
                 workers_[i]->SetWorkerState(WorkerState::Mapping);
                 mutex_.unlock();
                 return i;

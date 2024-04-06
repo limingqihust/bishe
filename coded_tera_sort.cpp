@@ -122,15 +122,18 @@ void Master::CodedTeraSort() {
     std::cout << "[master] REDUCE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
 
-    while (true) {
-        sleep(1);
-    }
 }
 
 void Worker::CodedTeraSort() {
-    LOG_INFO("[worker] my_host_name: %s, id: %d, CodedTeraSort start", my_host_name_.c_str(), id_);
+    LOG_INFO(
+        "[worker] my_host_name: %s, id: %d, CodedTeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
+        "intpuf_file_prefix: %s",
+        my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+        job_text_.input_file_prefix.c_str());
     // RECEIVE CONFIGURATION FROM MASTER
-    coded_conf = new CodedConfiguration;
+    // coded_conf = new CodedConfiguration;
+    coded_conf = new CodedConfiguration(job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+                                        job_text_.input_file_prefix);
     // MPI_Bcast( (void*) conf, sizeof( Configuration ), MPI_CHAR, 0, MPI_COMM_WORLD );
 
     // RECEIVE PARTITIONS FROM MASTER
@@ -169,7 +172,6 @@ void Worker::CodedTeraSort() {
     // EXECTUTE SHUFFLE PHASE
     ExecCodedShuffle();
     delete mailbox_->get<unsigned char>();
-
 
     // EXECTUTE DECODE PHASE
     auto decode_start = std::chrono::high_resolution_clock::now();

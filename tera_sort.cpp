@@ -120,9 +120,13 @@ void Master::TeraSort() {
 }
 
 void Worker::TeraSort() {
-    LOG_INFO("[worker] my_host_name: %s, id: %d, TeraSort start", my_host_name_.c_str(), id_);
-    // RECEIVE CONFIGURATION FROM MASTER
-    conf = new Configuration;
+    LOG_INFO(
+        "[worker] my_host_name: %s, id: %d, TeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
+        "intpuf_file_prefix: %s",
+        my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+        job_text_.input_file_prefix.c_str());  // RECEIVE CONFIGURATION FROM MASTER
+    // conf = new Configuration;
+    conf = new Configuration(job_text_.input_file_num, job_text_.reducer_num, job_text_.r, job_text_.input_file_prefix);
     // MPI_Bcast( (void*) conf, sizeof( Configuration ), MPI_CHAR, 0, MPI_COMM_WORLD );
 
     // RECEIVE PARTITIONS FROM MASTER
@@ -183,7 +187,6 @@ void Worker::TeraSort() {
         memcpy(buff, *it, conf->getLineSize());
         localList.push_back(buff);
     }
-
 
     // append data from other workers
     for (unsigned int i = 1; i <= conf->getNumReducer(); i++) {

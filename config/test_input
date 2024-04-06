@@ -1,2 +1,2 @@
-TeraSort        6   6   2   ./Input/Input10000_
-TeraSort   15  6   2   ./Input/Input10000-C_ 
+CodedTeraSort   15  6   2   ./Input/Input10000-C 
+TeraSort        6   6   2   ./Input/Input10000

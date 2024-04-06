@@ -6,7 +6,7 @@
 void MasterManager::Run(JobText job_text) {
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
-    LOG_INFO("[master manager] choose id: %d to do job", master_id);
+    LOG_INFO("[master manager] choose id: %d to do job: %s", master_id, JobTextToString(master_id, job_text).c_str());
     // 2. assign job to this master
     masters_[master_id]->SetJobText(job_text);
 
@@ -26,6 +26,11 @@ int MasterManager::FindFreeMaster() {
                 masters_[i]->SetMasterState(MasterState::Mapping);
                 mutex_.unlock();
                 return i;
+            } else if (masters_[i]->GetMasterState() == MasterState::Done) {
+                // master_thds_[i].join();
+                masters_[i]->SetMasterState(MasterState::Mapping);
+                mutex_.unlock();
+                return i;
             }
         }
         mutex_.unlock();
@@ -35,17 +40,20 @@ int MasterManager::FindFreeMaster() {
 
 std::vector<int> MasterManager::RequestWorkerIds(int master_id, const JobText& job_text) {
     std::vector<int> worker_ids;
-    for(int i = 0; i < worker_host_num_; i++) {
+    for (int i = 0; i < worker_host_num_; i++) {
         auto mailbox = worker_host_mailboxs_[i];
         // send master_id and job_text to worker manager, meaning a request to worker manager and notify master_id, job_text to it
         const std::string info = JobTextToString(master_id, job_text);
-        char* temp = new char [info.size()];
+        char* temp = new char[info.size()];
         strcpy(temp, info.c_str());
+        LOG_INFO("[master manager] send job_text to mailbox: %s", mailbox->get_cname());
         Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());
         
         // record worker_id
         int* worker_id_info = mailbox_->get<int>();
         worker_ids.push_back(*worker_id_info);
+        LOG_INFO("[master] receive worker_id: %d from mailbox: %s", *worker_id_info,
+                 mailbox_->get_cname());
         delete worker_id_info;
     }
     return worker_ids;
@@ -55,7 +63,7 @@ std::vector<int> MasterManager::RequestWorkerIds(int master_id, const JobText& j
  * modify parameter r of coded-terasort
 */
 void MasterManager::SetR(int r) {
-    for(int i = 0; i < master_num_; i++) {
+    for (int i = 0; i < master_num_; i++) {
         masters_[i]->SetR(r);
     }
 }
@@ -83,23 +91,25 @@ UtilityInfo MasterManager::RunTryR(JobText job, int r) {
  * 2. 向WorkerManager请求Worker
  * 3. 处理Worker的Task请求
 */
-void Master::DoJob(std::vector<int> worker_ids) {
+void Master::DoJob(const std::vector<int>& worker_ids) {
     assert(worker_ids.size() == worker_host_num_);
-    for(int i = 0; i < worker_host_num_; i++) {
-        worker_mailboxs_.push_back(simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
+    for (int i = 0; i < worker_host_num_; i++) {
+        worker_mailboxs_.push_back(
+            simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
     }
 
     // notify worker_ids to all worker
-    for(auto mailbox : worker_mailboxs_) {
-        int* worker_ids_temp = new int [worker_host_num_];
-        for(int i = 0; i < worker_host_num_; i++) {
+    for (auto mailbox : worker_mailboxs_) {
+        int* worker_ids_temp = new int[worker_host_num_];
+        for (int i = 0; i < worker_host_num_; i++) {
             worker_ids_temp[i] = worker_ids[i];
         }
-        mailbox->put(worker_ids_temp, worker_host_num_ * 4);
+        LOG_INFO("[master] id: %d send worker ids to mailbox: %s", id_, mailbox->get_cname());
+        mailbox->put(worker_ids_temp, worker_host_num_ * sizeof(int));
     }
 
     // 2. do job
-    switch(job_text_.type) {
+    switch (job_text_.type) {
         case JobType::TeraSort:
             TeraSort();
             break;
@@ -113,14 +123,15 @@ void Master::DoJob(std::vector<int> worker_ids) {
  * exec job with parameter r, return utility_info
 */
 UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
-    for(int i = 0; i < worker_host_num_; i++) {
-        worker_mailboxs_.push_back(simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
+    for (int i = 0; i < worker_host_num_; i++) {
+        worker_mailboxs_.push_back(
+            simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
     }
 
     // 1. notify worker_ids to all worker
-    for(auto mailbox : worker_mailboxs_) {
-        int* worker_ids_temp = new int [worker_host_num_];
-        for(int i = 0; i < worker_host_num_; i++) {
+    for (auto mailbox : worker_mailboxs_) {
+        int* worker_ids_temp = new int[worker_host_num_];
+        for (int i = 0; i < worker_host_num_; i++) {
             worker_ids_temp[i] = worker_ids[i];
         }
         mailbox->put(worker_ids_temp, worker_host_num_ * 4);
