@@ -243,6 +243,7 @@ void Worker::ExecCodedMap() {
             unsigned char* buff = new unsigned char[lineSize];
             inputFile.read((char*)buff, lineSize);
             unsigned int wid = trie->findPartition(buff);
+            assert(pc.find(wid) != pc.end());
             pc[wid]->push_back(buff);
             // inputPartitionCollection[ inputId ][ wid ]->push_back( buff );
         }

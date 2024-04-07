@@ -17,6 +17,8 @@ void WorkerManager::Run() {
 
         // 2. find a free worker responsible for this job
         int worker_id = FindFreeWorker();
+        workers_[worker_id] = std::make_shared<Worker>(my_host_name_, master_host_name_, worker_host_names_.size(),
+                                                           worker_host_names_, worker_id, id_, bw_config_);
         workers_[worker_id]->SetMasterMailbox(master_id);
         workers_[worker_id]->SetJobText(job_text);
         // 3. notify worker id to master
@@ -28,9 +30,9 @@ void WorkerManager::Run() {
         workers_[worker_id]->DoJob();
 
         // 5. reset this worker
-        // mutex_.lock();
-        // workers_[worker_id]->SetWorkerState(WorkerState::DONE);
-        // mutex_.unlock();
+        mutex_.lock();
+        workers_[worker_id]->SetWorkerState(WorkerState::DONE);
+        mutex_.unlock();
     }
 }
 

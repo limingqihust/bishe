@@ -21,9 +21,9 @@ void MasterManager::Run(JobText& job_text) {
     masters_[master_id]->DoJob(master_ids);
 
     // 5. reset this worker
-    // mutex_.lock();
-    // masters_[master_id]->SetMasterState(MasterState::Done);
-    // mutex_.unlock();
+    mutex_.lock();
+    masters_[master_id]->SetMasterState(MasterState::Done);
+    mutex_.unlock();
 }
 
 /**
