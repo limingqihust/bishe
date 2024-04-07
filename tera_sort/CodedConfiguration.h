@@ -23,7 +23,7 @@ public:
 	/**
 	 * set job_text to coded_conf
 	*/
-	CodedConfiguration(int input_file_num, int reducer_num, int r, const std::string& input_file_prefix) {
+	CodedConfiguration(int input_file_num, int reducer_num, int r, const std::string& input_file_prefix) : Configuration() {
 		numInput = input_file_num;
 		numReducer = reducer_num;
 		load = r;

@@ -23,6 +23,7 @@ add_executable(my_master_workers
     "./tera_sort/PartitionSampling.cpp" 
     "./tera_sort/Trie.cpp" 
     "./tera_sort/Utility.cpp" 
+    "./tera_sort/InputSplitter.cpp"
     "my_master_workers.cpp" 
     "master.cpp"
     "worker.cpp" 

@@ -94,6 +94,7 @@ public:
 private:
     int FindFreeMaster();
     std::vector<int> RequestWorkerIds(int master_id, const JobText& job_text);
+    void SplitInput(const JobText& job_text);
 
     int master_num_;                                            // num of master in this master host
     int worker_host_num_;                                       // num of worker host

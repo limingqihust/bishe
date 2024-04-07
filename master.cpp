@@ -1,4 +1,5 @@
 #include "master.h"
+#include "./tera_sort/InputSplitter.h"
 
 /**
  * called when master node receive a job
@@ -10,8 +11,13 @@ void MasterManager::Run(JobText job_text) {
     // 2. assign job to this master
     masters_[master_id]->SetJobText(job_text);
 
+    // 3. split file, generate input files
+    SplitInput(job_text);
+
     // 3. let master to this job(return directly, free resources when job done automatically)
-    masters_[master_id]->DoJob(RequestWorkerIds(master_id, job_text));
+    std::vector<int> master_ids = RequestWorkerIds(master_id, job_text);
+
+    masters_[master_id]->DoJob(master_ids);
 }
 
 /**
@@ -48,15 +54,36 @@ std::vector<int> MasterManager::RequestWorkerIds(int master_id, const JobText& j
         strcpy(temp, info.c_str());
         LOG_INFO("[master manager] send job_text to mailbox: %s", mailbox->get_cname());
         Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());
-        
+
         // record worker_id
         int* worker_id_info = mailbox_->get<int>();
         worker_ids.push_back(*worker_id_info);
-        LOG_INFO("[master] receive worker_id: %d from mailbox: %s", *worker_id_info,
-                 mailbox_->get_cname());
+        LOG_INFO("[master] receive worker_id: %d from mailbox: %s", *worker_id_info, mailbox_->get_cname());
         delete worker_id_info;
     }
     return worker_ids;
+}
+
+void MasterManager::SplitInput(const JobText& job_text) {
+    Configuration* conf;
+    switch (job_text.type) {
+        case JobType::TeraSort:
+            conf = new Configuration(job_text.input_file_num, job_text.reducer_num, job_text.r,
+                                     job_text.input_file_prefix);
+            break;
+        case JobType::CodedTeraSort:
+            conf = new CodedConfiguration(job_text.input_file_num, job_text.reducer_num, job_text.r,
+                                          job_text.input_file_prefix);
+            break;
+    }
+    InputSplitter input_splitter;
+    input_splitter.setConfiguration(conf);
+    input_splitter.splitInputFile();
+    LOG_INFO(
+        "[master manager] split input file, input_file_num: %d, reducer_num: %d, r: %d, input_file_prefix: %s done",
+        job_text.input_file_num, job_text.reducer_num, job_text.r, job_text.input_file_prefix.c_str());
+
+    delete conf;
 }
 
 /**
@@ -83,7 +110,6 @@ UtilityInfo MasterManager::RunTryR(JobText job, int r) {
 
     return {-1, -1, -1};
 }
-
 
 /**
  * 被MasterManager调用
