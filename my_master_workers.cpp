@@ -33,9 +33,10 @@ static void my_master(std::vector<std::string> args) {
     //     online_learning_module->DoWork();
     // });
 
-    // do job now
-    for(int i = 0; i < 3; i++) {
-        master_manager->Run(job_queue->Pop());
+    // // do job now
+    for(int i = 0; i < 4; i++) {
+        JobText job_text = job_queue->Pop();
+        master_manager->Run(job_text);
     }
     while(true) {
         sleep(1);

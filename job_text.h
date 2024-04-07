@@ -13,3 +13,4 @@ JobType StringToJobType(const std::string& str);
 std::string JobTypeToString(const JobType& job_type);
 std::string JobTextToString(int master_id, const JobText& job_text);
 JobText StringToJobText(int& master_id, const std::string& job_text_str);
+int GetJobTextInputFileNum(const JobText& job_text);

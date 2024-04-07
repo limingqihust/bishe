@@ -1,3 +1,4 @@
-CodedTeraSort   15  6   2   ./Input/Input10000-C 
-TeraSort        6   6   2   ./Input/Input10000
-CodedTeraSort        15   6   2   ./Input/Input10000-C
+CodedTeraSort   -1  6   2   ./Input/Input10000-C 
+CodedTeraSort   -1  6   3   ./Input/Input10000-C
+CodedTeraSort   -1  6   4   ./Input/Input10000-C
+CodedTeraSort   -1  6   5   ./Input/Input10000-C

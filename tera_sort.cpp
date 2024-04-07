@@ -1,9 +1,9 @@
 #include "master.h"
 #include "worker.h"
 
-void Master::TeraSort() {
+UtilityInfo Master::TeraSort() {
     LOG_INFO("[master] master_id: %d, TeraSort start", id_);
-
+    UtilityInfo res;
     // GENERATE LIST OF PARTITIONS.
     PartitionSampling partitioner;
     partitioner.setConfiguration(&conf);
@@ -36,6 +36,7 @@ void Master::TeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
+    res.computation_load = avgTime / numWorker;
     std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
     assert(worker_mailboxs_.size() == numWorker);
@@ -79,6 +80,7 @@ void Master::TeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
+    res.network_load = avgTime / numWorker;
     std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
 
@@ -117,6 +119,9 @@ void Master::TeraSort() {
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
+
+    // return UtilityInfo to master manager
+    return res;
 }
 
 void Worker::TeraSort() {

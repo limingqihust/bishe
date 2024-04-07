@@ -63,3 +63,14 @@ JobText StringToJobText(int& master_id, const std::string& job_text_str) {
     res.input_file_prefix = job_infos[5];
     return res;
 }
+
+int GetJobTextInputFileNum(const JobText& job_text) {
+    int input_file_num = 1;
+    for(int i = job_text.reducer_num, j = 1; j <= job_text.r; i--, j++) {
+        input_file_num *= i;
+    }
+    for(int i = 1; i <= job_text.r; i++) {
+        input_file_num /= i;
+    }
+    return input_file_num;
+}

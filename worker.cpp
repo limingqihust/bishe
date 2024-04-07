@@ -26,6 +26,11 @@ void WorkerManager::Run() {
 
         // 4. let this worker to do job(including map task, shuffle task and reduce task)
         workers_[worker_id]->DoJob();
+
+        // 5. reset this worker
+        // mutex_.lock();
+        // workers_[worker_id]->SetWorkerState(WorkerState::DONE);
+        // mutex_.unlock();
     }
 }
 
@@ -57,6 +62,7 @@ int WorkerManager::FindFreeWorker() {
 void Worker::DoJob() {
     // receive worker_partner_ids
     int* worker_partener_ids_temp = mailbox_->get<int>();
+    worker_partener_ids_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
         worker_partener_ids_.push_back(worker_partener_ids_temp[i]);
     }

@@ -4,20 +4,26 @@
 /**
  * called when master node receive a job
  */
-void MasterManager::Run(JobText job_text) {
+void MasterManager::Run(JobText& job_text) {
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
     LOG_INFO("[master manager] choose id: %d to do job: %s", master_id, JobTextToString(master_id, job_text).c_str());
     // 2. assign job to this master
+    job_text.input_file_num = GetJobTextInputFileNum(job_text);
     masters_[master_id]->SetJobText(job_text);
 
     // 3. split file, generate input files
     SplitInput(job_text);
 
-    // 3. let master to this job(return directly, free resources when job done automatically)
+    // 4. let master to this job(return directly, free resources when job done automatically)
     std::vector<int> master_ids = RequestWorkerIds(master_id, job_text);
 
     masters_[master_id]->DoJob(master_ids);
+
+    // 5. reset this worker
+    // mutex_.lock();
+    // masters_[master_id]->SetMasterState(MasterState::Done);
+    // mutex_.unlock();
 }
 
 /**
@@ -68,7 +74,7 @@ void MasterManager::SplitInput(const JobText& job_text) {
     Configuration* conf;
     switch (job_text.type) {
         case JobType::TeraSort:
-            conf = new Configuration(job_text.input_file_num, job_text.reducer_num, job_text.r,
+            conf = new Configuration(job_text.reducer_num, job_text.reducer_num, job_text.r,
                                      job_text.input_file_prefix);
             break;
         case JobType::CodedTeraSort:
@@ -107,8 +113,6 @@ UtilityInfo MasterManager::RunTryR(JobText job, int r) {
 
     // 3. let master to this job(return directly, free resources when job done automatically)
     return masters_[master_id]->DoJobTryR(RequestWorkerIds(master_id, job), r);
-
-    return {-1, -1, -1};
 }
 
 /**
@@ -119,6 +123,7 @@ UtilityInfo MasterManager::RunTryR(JobText job, int r) {
 */
 void Master::DoJob(const std::vector<int>& worker_ids) {
     assert(worker_ids.size() == worker_host_num_);
+    worker_mailboxs_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
         worker_mailboxs_.push_back(
             simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
@@ -164,8 +169,5 @@ UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
     }
 
     // 2. do job
-    // TeraSort();
-    CodedTeraSort();
-
-    return {-1, -1, -1};
+    return CodedTeraSort();
 }

@@ -1,9 +1,10 @@
 #include "master.h"
 #include "worker.h"
 
-void Master::CodedTeraSort() {
+UtilityInfo Master::CodedTeraSort() {
     LOG_INFO("[master] master_id: %d, CodedTeraSort start", id_);
 
+    UtilityInfo res;
     // GENERATE LIST OF PARTITIONS.
     PartitionSampling partitioner;
     partitioner.setConfiguration(&coded_conf);
@@ -50,6 +51,7 @@ void Master::CodedTeraSort() {
     }
     std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
+    res.computation_load = avgTime / numWorker;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -89,6 +91,7 @@ void Master::CodedTeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
+    res.network_load = avgTime / numWorker;
     std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
     for (auto mailbox : worker_mailboxs_) {
@@ -121,7 +124,7 @@ void Master::CodedTeraSort() {
     }
     std::cout << "[master] REDUCE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
               << endl;
-
+    return res;
 }
 
 void Worker::CodedTeraSort() {

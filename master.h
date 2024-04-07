@@ -46,8 +46,8 @@ public:
     void SetR(int r) { r_ = r; }
 
 private:
-    void TeraSort();
-    void CodedTeraSort();
+    UtilityInfo TeraSort();
+    UtilityInfo CodedTeraSort();
 
     MasterState state_;
     int id_;
@@ -87,7 +87,7 @@ public:
     }
 
     // receive a job, alloc a master to execute this job
-    void Run(JobText job_text);
+    void Run(JobText& job_text);
     void SetR(int r);
     UtilityInfo RunTryR(JobText job, int r);
 
