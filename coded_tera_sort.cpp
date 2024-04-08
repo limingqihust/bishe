@@ -192,6 +192,8 @@ void Worker::CodedTeraSort() {
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
 
     PrintLocalList();
+
+    Clear();
 }
 
 void Worker::GenMulticastGroup() {

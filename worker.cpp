@@ -17,8 +17,8 @@ void WorkerManager::Run() {
 
         // 2. find a free worker responsible for this job
         int worker_id = FindFreeWorker();
-        workers_[worker_id] = std::make_shared<Worker>(my_host_name_, master_host_name_, worker_host_names_.size(),
-                                                           worker_host_names_, worker_id, id_, bw_config_);
+        // workers_[worker_id] = std::make_shared<Worker>(my_host_name_, master_host_name_, worker_host_names_.size(),
+        //                                                    worker_host_names_, worker_id, id_, bw_config_);
         workers_[worker_id]->SetMasterMailbox(master_id);
         workers_[worker_id]->SetJobText(job_text);
         // 3. notify worker id to master
@@ -78,6 +78,42 @@ void Worker::DoJob() {
             CodedTeraSort();
             break;
     }
+}
+
+void Worker::Clear() {
+    // clean
+    // LOG_INFO("encodePreData.size: %ld", encodePreData.size());
+    for(auto it0 : encodePreData) {
+        for(auto it1 : it0.second) {
+            for(auto it2 : it1.second) {
+                delete [] it2.data;
+            }
+        }
+    }
+    encodePreData.clear();
+    decodePreData.clear();
+
+    delete coded_conf;
+    delete cg;
+    inputPartitionCollection.clear();
+    encodeDataSend.clear();
+    encodeDataRecv.clear();
+    multicastGroupMap.clear();
+    localLoadSet.clear();
+    // LOG_INFO("partitionList size: %ld", partitionList.size());
+    for(auto p : partitionList) {
+        delete [] p;
+    }
+    partitionList.clear();
+    partitionCollection.clear();
+    partitionTxData.clear();
+    partitionRxData.clear();
+    // LOG_INFO("localList size: %ld", localList.size());
+    for(auto p : localList) {
+        delete [] p;
+    }
+    localList.clear();
+    delete trie;
 }
 
 
