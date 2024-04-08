@@ -5,6 +5,7 @@
  * called when master node receive a job
  */
 void MasterManager::Run(JobText& job_text) {
+    assert(1 <= job_text.r && job_text.r <= worker_host_num_ - 1);
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
     LOG_INFO("[master manager] choose id: %d to do job: %s", master_id, JobTextToString(master_id, job_text).c_str());
@@ -104,15 +105,28 @@ void MasterManager::SetR(int r) {
 /**
  * do micro experient with parameter r, return UtilityInfo
 */
-UtilityInfo MasterManager::RunTryR(JobText job, int r) {
+UtilityInfo MasterManager::RunTryR(JobText& job, int r) {
+    assert(1 <= r && r <= worker_host_num_ - 1);
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
     LOG_INFO("[master manager] choose id: %d to do job", master_id);
     // 2. assign job to this master
+    job.r = r;
+    job.input_file_num = GetJobTextInputFileNum(job);
     masters_[master_id]->SetJobText(job);
 
-    // 3. let master to this job(return directly, free resources when job done automatically)
-    return masters_[master_id]->DoJobTryR(RequestWorkerIds(master_id, job), r);
+    // 3. split file, generate input files
+    SplitInput(job);
+
+    // 4. let master to this job(return directly, free resources when job done automatically)
+    UtilityInfo res = masters_[master_id]->DoJobTryR(RequestWorkerIds(master_id, job), r);
+
+    // 5. reset this worker
+    mutex_.lock();
+    masters_[master_id]->SetMasterState(MasterState::Done);
+    mutex_.unlock();
+
+    return res;
 }
 
 /**
@@ -122,6 +136,7 @@ UtilityInfo MasterManager::RunTryR(JobText job, int r) {
  * 3. 处理Worker的Task请求
 */
 void Master::DoJob(const std::vector<int>& worker_ids) {
+    LOG_INFO("[master] id: %d do job: %s", id_, JobTextToString(id_, job_text_).c_str());
     assert(worker_ids.size() == worker_host_num_);
     worker_mailboxs_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
@@ -154,20 +169,33 @@ void Master::DoJob(const std::vector<int>& worker_ids) {
  * exec job with parameter r, return utility_info
 */
 UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
+    LOG_INFO("[master] id: %d do job: %s try r: %d", id_, JobTextToString(id_, job_text_).c_str(), r);
+    assert(worker_ids.size() == worker_host_num_);
+    UtilityInfo res;
+    worker_mailboxs_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
         worker_mailboxs_.push_back(
             simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
     }
 
-    // 1. notify worker_ids to all worker
+    // notify worker_ids to all worker
     for (auto mailbox : worker_mailboxs_) {
         int* worker_ids_temp = new int[worker_host_num_];
         for (int i = 0; i < worker_host_num_; i++) {
             worker_ids_temp[i] = worker_ids[i];
         }
-        mailbox->put(worker_ids_temp, worker_host_num_ * 4);
+        LOG_INFO("[master] id: %d send worker ids to mailbox: %s", id_, mailbox->get_cname());
+        mailbox->put(worker_ids_temp, worker_host_num_ * sizeof(int));
     }
 
     // 2. do job
-    return CodedTeraSort();
+    switch (job_text_.type) {
+        case JobType::TeraSort:
+            res = TeraSort();
+            break;
+        case JobType::CodedTeraSort:
+            res = CodedTeraSort();
+            break;
+    }
+    return res;
 }

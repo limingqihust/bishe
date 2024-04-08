@@ -12,6 +12,9 @@ struct UtilityInfo {
     double time;
     double network_load;
     double computation_load;
+    std::string PrintInfo() {
+        return "time: " + std::to_string(time) + " network_load: " + std::to_string(network_load) + " computation_load: " + std::to_string(computation_load); 
+    }
 };
 
 /**
@@ -89,7 +92,7 @@ public:
     // receive a job, alloc a master to execute this job
     void Run(JobText& job_text);
     void SetR(int r);
-    UtilityInfo RunTryR(JobText job, int r);
+    UtilityInfo RunTryR(JobText& job, int r);
 
 private:
     int FindFreeMaster();

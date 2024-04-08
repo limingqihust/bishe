@@ -8,8 +8,17 @@
 */
 void OnlineLearningModule::DoWork() {
     while (true) {
-        sleep(interval_);
-        DoMicroExperient();
+        // do one job with r specified by online_learning_module, then do micro experient
+        for(int i = 0; i < interval_; i++) {
+            JobText job_text = job_queue_->Pop();
+            job_text.r = r_;
+            master_manager_->Run(job_text);
+        }
+        DoMicroExperient(); // do micro experient, adjust r
+        LOG_INFO("[OnlineLearningModule] do micro experient done");
+        while(true) {
+            sleep(1);
+        }
     }
 }
 
@@ -29,7 +38,9 @@ void OnlineLearningModule::DoMicroExperient() {
     LOG_INFO("[OnlineLearningModule] do first a/b test, assign job to master_manager with a_r: %d, b_r: %d", a_r, b_r);
     // thd_a = std::thread([&] { utility_1.first = master_manager_->RunTryR(job_queue_->Pop(), a_r); });
     utility_1.first = master_manager_->RunTryR(lab1.first, a_r);
+    LOG_INFO("[OnlineLearningModule] first a lab done, utility: %s", utility_1.first.PrintInfo().c_str());
     utility_1.second = master_manager_->RunTryR(lab1.second, b_r);
+    LOG_INFO("[OnlineLearningModule] first b lab done, utility: %s", utility_1.second.PrintInfo().c_str());
 
     // thd_b = std::thread([&] { utility_1.second = master_manager_->RunTryR(job_queue_->Pop(), b_r); });
 
@@ -40,7 +51,9 @@ void OnlineLearningModule::DoMicroExperient() {
     LOG_INFO("[OnlineLearningModule] do second a/b test begin, assign job to master_manager with a_r: %d, b_r: %d", a_r,
              b_r);
     utility_2.first = master_manager_->RunTryR(lab2.first, a_r);
+    LOG_INFO("[OnlineLearningModule] second a lab done, utility: %s", utility_2.first.PrintInfo().c_str());
     utility_2.second = master_manager_->RunTryR(lab2.second, b_r);
+    LOG_INFO("[OnlineLearningModule] second b lab done, utility: %s", utility_2.second.PrintInfo().c_str());
     // thd_a = std::thread([&] { utility_2.first = master_manager_->RunTryR(job_queue_->Pop(), a_r); });
 
     // thd_b = std::thread([&] { utility_2.second = master_manager_->RunTryR(job_queue_->Pop(), b_r); });
@@ -56,6 +69,7 @@ void OnlineLearningModule::DoMicroExperient() {
 */
 void OnlineLearningModule::UpdateRAccordingToABTest(const UtilityInfo& u_1_a, const UtilityInfo& u_1_b,
                                                     const UtilityInfo& u_2_a, const UtilityInfo& u_2_b) {
+    LOG_INFO("[UpdateRAccordingToABTest] %lf, %lf, %lf, %lf", GetUtility(u_1_a), GetUtility(u_1_b), GetUtility(u_2_a), GetUtility(u_2_b));
     if (GetUtility(u_1_a) > GetUtility(u_1_b) && GetUtility(u_2_a) > GetUtility(u_2_b)) {
         LOG_INFO("[OnlineLearningModule] modify r from %d to %d", r_, GetAR());
         r_ = GetAR();
@@ -84,5 +98,5 @@ void OnlineLearningModule::UpdateEta() {
  * 3. node computing load
 */
 double OnlineLearningModule::GetUtility(const UtilityInfo& utility_info) const {
-    return 1 / utility_info.time;
+    return utility_info.computation_load  + 1e5 / utility_info.network_load;
 }

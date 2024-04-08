@@ -2,7 +2,8 @@
 
 /**
  * interval/s   master-worker-bw/Bps    worker-worker-bw/Bps    broadcast-bw/Bls    max-bw/Bps 
- * 10           100000                  20000                   80000               250000000
+ * 10           10                      10                      80                  250000000
+ * 10           250000000               250000000               250000000           250000000
 */
 BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
     std::ifstream input(path);

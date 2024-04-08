@@ -1,6 +1,6 @@
 #include "master.h"
 #include "worker.h"
-
+#define PRINT_LOCAL_LIST
 UtilityInfo Master::CodedTeraSort() {
     LOG_INFO("[master] master_id: %d, CodedTeraSort start", id_);
 
@@ -190,8 +190,9 @@ void Worker::CodedTeraSort() {
     auto reduce_end = std::chrono::high_resolution_clock::now();
     rTime = std::chrono::duration_cast<std::chrono::duration<double>>(reduce_end - reduce_start).count();
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
-
+#ifdef PRINT_LOCAL_LIST
     PrintLocalList();
+#endif
 
     Clear();
 }

@@ -20,8 +20,8 @@ public:
 
 private:
     void DoMicroExperient();
-    int GetAR() { return std::max(max_r_, int((1 + eta_) * r_)); }
-    int GetBR() { return std::min(1, int((1 - eta_) * r_)); }
+    int GetAR() { return std::min(max_r_, r_ + 1); }
+    int GetBR() { return std::max(1, r_ - 1); }
     void UpdateRAccordingToABTest(const UtilityInfo& u_1_a, const UtilityInfo& u_1_b, const UtilityInfo& u_2_a,
                                   const UtilityInfo& u_2_b);
     void UpdateEta();
@@ -33,6 +33,6 @@ private:
     double eta_ = 0.1;
     double eta_min_ = 0.01;
     double eta_max_ = 0.05;
-    int max_r_;
+    int max_r_;             // reducer_num - 1
     double interval_ = 10.0;
 };
