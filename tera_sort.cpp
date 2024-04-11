@@ -24,6 +24,15 @@ UtilityInfo Master::TeraSort() {
         }
     }
 
+    // init tasks_info_
+    InitTaskSchedule(partitionList);
+
+    // adjust task schedule according computation load and network load
+    TaskSchedule();
+
+    // send map task to workers
+    MapSchedule();
+
     // COMPUTE MAP TIME
     int numWorker = conf.getNumReducer();
     double rTime = 0;
@@ -60,17 +69,19 @@ UtilityInfo Master::TeraSort() {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
 
+    // schedule shuffle according to tasks_info_
+    ShuffleSchedule();
     // COMPUTE SHUFFLE TIME
-    avgTime = 0;
-    maxTime = 0;
-    for (auto mailbox : worker_mailboxs_) {
-        // notify worker i to send data
-        Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
-        // wait for all worker receive data done
-        for (int i = 0; i < worker_host_num_ - 1; i++) {
-            delete mailbox_->get<unsigned char>();
-        }
-    }
+    // avgTime = 0;
+    // maxTime = 0;
+    // for (auto mailbox : worker_mailboxs_) {
+    //     // notify worker i to send data
+    //     Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
+    //     // wait for all worker receive data done
+    //     for (int i = 0; i < worker_host_num_ - 1; i++) {
+    //         delete mailbox_->get<unsigned char>();
+    //     }
+    // }
     avgTime = 0;
     maxTime = 0;
     for (int i = 1; i <= numWorker; i++) {
@@ -103,6 +114,9 @@ UtilityInfo Master::TeraSort() {
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
+
+    // schedule reduce task to according to tasks_info
+    ReduceSchedule();
 
     // COMPUTE REDUCE TIME
     avgTime = 0;
@@ -144,45 +158,46 @@ void Worker::TeraSort() {
     ExecMap();
 
     // SHUFFLING PHASE
+    ExecShuffle();
     unsigned int lineSize = conf->getLineSize();
-    double shuffle_start = simgrid::s4u::Engine::get_clock();
-    for (unsigned int i = 1; i <= conf->getNumReducer(); i++) {
-        if (i == host_id_) {  // should send to other worker
-            // wait for master permission to send data
-            delete mailbox_->get<unsigned char>();
-            // Sending from node i
-            for (unsigned int j = 1; j <= conf->getNumReducer(); j++) {
-                if (j == i) {
-                    continue;
-                }
-                TxData& txData = partitionTxData[j - 1];
-                auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[j - 1] + ":" +
-                                                              std::to_string(worker_partener_ids_[j - 1]));
-                Send(mailbox, bw_config_->GetBW(BWType::W_W), new int(txData.numLine), sizeof(int));
-                unsigned char* data_temp = new unsigned char[txData.numLine * lineSize];
-                memcpy(data_temp, txData.data, txData.numLine * lineSize);
-                Send(mailbox, bw_config_->GetBW(BWType::W_W), data_temp, txData.numLine * lineSize);
-                delete[] txData.data;
-                // MPI_Send( &( txData.numLine ), 1, MPI_UNSIGNED_LONG_LONG, j, 0, MPI_COMM_WORLD );
-                // MPI_Send( txData.data, txData.numLine * lineSize, MPI_UNSIGNED_CHAR, j, 0, MPI_COMM_WORLD );
-            }
+    // double shuffle_start = simgrid::s4u::Engine::get_clock();
+    // for (unsigned int i = 1; i <= conf->getNumReducer(); i++) {
+    //     if (i == host_id_) {  // should send to other worker
+    //         // wait for master permission to send data
+    //         delete mailbox_->get<unsigned char>();
+    //         // Sending from node i
+    //         for (unsigned int j = 1; j <= conf->getNumReducer(); j++) {
+    //             if (j == i) {
+    //                 continue;
+    //             }
+    //             TxData& txData = partitionTxData[j - 1];
+    //             auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[j - 1] + ":" +
+    //                                                           std::to_string(worker_partener_ids_[j - 1]));
+    //             Send(mailbox, bw_config_->GetBW(BWType::W_W), new int(txData.numLine), sizeof(int));
+    //             unsigned char* data_temp = new unsigned char[txData.numLine * lineSize];
+    //             memcpy(data_temp, txData.data, txData.numLine * lineSize);
+    //             Send(mailbox, bw_config_->GetBW(BWType::W_W), data_temp, txData.numLine * lineSize);
+    //             delete[] txData.data;
+    //             // MPI_Send( &( txData.numLine ), 1, MPI_UNSIGNED_LONG_LONG, j, 0, MPI_COMM_WORLD );
+    //             // MPI_Send( txData.data, txData.numLine * lineSize, MPI_UNSIGNED_CHAR, j, 0, MPI_COMM_WORLD );
+    //         }
 
-        } else {  // receive data from worker i
-            TxData& rxData = partitionRxData[i - 1];
-            int* len_temp = mailbox_->get<int>();
-            rxData.numLine = *len_temp;
-            delete len_temp;
-            rxData.data = new unsigned char[rxData.numLine * lineSize];
-            unsigned char* data_temp = mailbox_->get<unsigned char>();
-            memcpy(rxData.data, data_temp, rxData.numLine * lineSize);
-            delete[] data_temp;
-            // receive data from worker i done, notify master that i am done
-            Send(master_mailbox_, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
-        }
-    }
-    auto shuffle_end = simgrid::s4u::Engine::get_clock();
-    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_end - shuffle_start), sizeof(double));
-    delete mailbox_->get<unsigned char>();
+    //     } else {  // receive data from worker i
+    //         TxData& rxData = partitionRxData[i - 1];
+    //         int* len_temp = mailbox_->get<int>();
+    //         rxData.numLine = *len_temp;
+    //         delete len_temp;
+    //         rxData.data = new unsigned char[rxData.numLine * lineSize];
+    //         unsigned char* data_temp = mailbox_->get<unsigned char>();
+    //         memcpy(rxData.data, data_temp, rxData.numLine * lineSize);
+    //         delete[] data_temp;
+    //         // receive data from worker i done, notify master that i am done
+    //         Send(master_mailbox_, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
+    //     }
+    // }
+    // auto shuffle_end = simgrid::s4u::Engine::get_clock();
+    // Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_end - shuffle_start), sizeof(double));
+    // delete mailbox_->get<unsigned char>();
 
     // UNPACK PHASE
     auto unpack_start = std::chrono::high_resolution_clock::now();
@@ -231,7 +246,14 @@ void Worker::ExecMap() {
 
     // READ INPUT FILE AND PARTITION DATA
     char filePath[MAX_FILE_PATH];
-    sprintf(filePath, "%s_%d", conf->getInputPath(), host_id_ - 1);
+    
+    // receive map task from master
+    char* command_temp = mailbox_->get<char>();
+    const Command command = ParseCommand(command_temp);
+    assert(command.type == CommandType::Map);
+    const std::vector<int> file_ids = command.file_ids;
+    assert(file_ids.size() == 1);
+    sprintf(filePath, "%s_%d", conf->getInputPath(), file_ids[0]);
     ifstream inputFile(filePath, ios::in | ios::binary | ios::ate);
     if (!inputFile.is_open()) {
         LOG_ERROR("[worker] my_host_name: %s, id: %d, cannot open file %s", my_host_name_.c_str(), id_,
@@ -352,4 +374,48 @@ void Worker::PrintPartitionTxData() {
             std::cout << std::endl;
         }
     }
+}
+
+void Worker::ExecShuffle() {
+    unsigned int lineSize = conf->getLineSize();
+    double shuffle_start = simgrid::s4u::Engine::get_clock();
+    while(true) {
+        char* command_temp = mailbox_->get<char>();
+        const Command command = ParseCommand(command_temp);
+        if (command.type == CommandType::End) {
+            break;
+        } else if (command.type == CommandType::Send) {                 // send data
+            for (auto send_id: command.send_ids) {
+                LOG_INFO("[worker] id: %d send data to id: %d", host_id_, send_id);
+                TxData& txData = partitionTxData[send_id - 1];
+                auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[send_id - 1] + ":" +
+                                                              std::to_string(worker_partener_ids_[send_id - 1]));
+                Send(mailbox, bw_config_->GetBW(BWType::W_W), new int(txData.numLine), sizeof(int));
+                unsigned char* data_temp = new unsigned char[txData.numLine * lineSize];
+                memcpy(data_temp, txData.data, txData.numLine * lineSize);
+                Send(mailbox, bw_config_->GetBW(BWType::W_W), data_temp, txData.numLine * lineSize);
+                delete[] txData.data;
+            }
+        } else if (command.type == CommandType::Receive) {
+            int receive_id = command.receive_id;
+            LOG_INFO("[worker] id: %d receive from id: %d", host_id_, receive_id);
+            TxData& rxData = partitionRxData[receive_id - 1];
+            int* len_temp = mailbox_->get<int>();
+            rxData.numLine = *len_temp;
+            delete len_temp;
+            rxData.data = new unsigned char[rxData.numLine * lineSize];
+            unsigned char* data_temp = mailbox_->get<unsigned char>();
+            memcpy(rxData.data, data_temp, rxData.numLine * lineSize);
+            delete[] data_temp;
+        } else {
+            assert(false && "Worker::ExecShuffle receive undefine command");
+        }
+
+        // receive data from worker i done, notify master that i am done
+        Send(master_mailbox_, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
+    }
+    auto shuffle_end = simgrid::s4u::Engine::get_clock();
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_end - shuffle_start), sizeof(double));
+    delete mailbox_->get<unsigned char>();
+    
 }

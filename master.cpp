@@ -1,5 +1,6 @@
 #include "master.h"
 #include "./tera_sort/InputSplitter.h"
+#include "tera_sort/Utility.h"
 
 /**
  * called when master node receive a job
@@ -198,4 +199,171 @@ UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
             break;
     }
     return res;
+}
+
+
+/**
+ * init tasks_info_
+*/
+void Master::InitTaskSchedule(const PartitionList* partition_list) {
+    unsigned char* left = new unsigned char [conf.getKeySize() + 1];
+    memset(left, 0, conf.getKeySize() + 1);
+    assert(partition_list->size() == conf.getNumReducer() - 1);
+    for(int i = 1; i <= conf.getNumReducer(); i++) {
+        TaskInfo task_info;
+        task_info.file_ids ={i - 1};
+        std::pair<unsigned char*, unsigned char*> partition;
+        partition.first = new unsigned char [conf.getKeySize() + 1];
+        memset(partition.first, 0, conf.getKeySize() + 1);
+        partition.second = new unsigned char [conf.getKeySize() + 1];
+        memset(partition.second, 0, conf.getKeySize() + 1);
+        memcpy(partition.first, left, conf.getKeySize() + 1);
+        if(i == conf.getNumReducer()) {
+            memset(partition.second, 0xff, conf.getKeySize());
+        } else {
+            memcpy(partition.second, (*partition_list)[i - 1], conf.getKeySize() + 1);
+        }
+        memcpy(left, partition.second, conf.getKeySize() + 1);
+        task_info.partitions.emplace_back(partition);
+        tasks_info_[i] = task_info;
+    }
+    delete [] left;
+
+    for(auto it: tasks_info_) {
+        std::cout << "worker host id: " << it.first << " task info: " << std::endl;
+        std::cout << "file id: {";
+        for(auto file_id: it.second.file_ids) {
+            std::cout << file_id << " ";
+        }
+        std::cout << "}" << std::endl;
+        std::cout << "partitions: ";
+        for(auto partition: it.second.partitions) {
+            std::cout << "{";
+            printKey(partition.first, conf.getKeySize());
+            std::cout << ", ";
+            printKey(partition.second, conf.getKeySize());
+            std::cout << "}";
+        }
+        std::cout << std::endl;
+    }
+}
+
+/**
+ * select a job, route from src_id to dst_id
+ * update task_info_(used when shuffle)
+*/
+void Master::TaskSchedule() {
+    return ;
+    // 1. select src_id, dst_id according node computation load and network load
+    int src_id = 1;
+    int dst_id = 2;
+    MasterState task_type = MasterState::Mapping;
+
+    // 2. update tasks_info_
+    assert(1 <= src_id && src_id <= worker_host_num_ && 1 <= dst_id && dst_id <= worker_host_num_);
+    assert(task_type == MasterState::Mapping || task_type == MasterState::Reducing);
+    std::vector<int> file_ids;
+    std::vector<std::pair<unsigned char*, unsigned char*>> partitions;
+    if (task_type == MasterState::Mapping) {
+        // route file in src node to dst node
+        // dst node should exec map with this files
+        // partition remains
+        file_ids = tasks_info_[src_id].file_ids;
+        for(auto file_id : file_ids) {
+            tasks_info_[dst_id].file_ids.emplace_back(file_id);
+        }
+
+    } else if (task_type == MasterState::Reducing) {
+        // dst node should exec reduce on parition on dst node
+        partitions = tasks_info_[src_id].partitions;
+        for(auto partition : partitions) {
+            tasks_info_[dst_id].partitions.emplace_back(partition);
+        }
+    } 
+
+
+
+    // 3. send info needed to src node and dst node
+    if (task_type == MasterState::Mapping) {
+        // route file in src node to dst node
+    } else if (task_type == MasterState::Reducing) {
+
+    }
+
+}
+
+
+/**
+ * schedule map task to workers according to tasks_info
+ * send map task to worker
+ * if no map task need to send to a worker, send a empty command
+*/
+void Master::MapSchedule() {
+    for(int i = 1; i <= conf.getNumReducer(); i++) {
+        Command command;
+        command.type = CommandType::Map;
+        command.file_ids = tasks_info_[i].file_ids;
+        int command_size;
+        char* command_temp = SerializeCommand(command, command_size);
+        LOG_INFO("[master] send map task to worker: %d, task info: %s", i, command_temp);
+        Send(worker_mailboxs_[i - 1], bw_config_->GetBW(BWType::MAX), command_temp, command_size);
+        // command += "MapTask:";
+        // for(auto file_id: tasks_info_[i].file_ids) {
+        //     command += std::to_string(file_id);
+        // }
+
+        // char* command_temp = new char [command.size()];
+        // memcpy(command_temp, command.c_str(), command.size());
+        // LOG_INFO("[master] send map task to worker: %d, task info: %s", i, command.c_str());
+        // Send(worker_mailboxs_[i - 1], bw_config_->GetBW(BWType::MAX), command_temp, command.size());
+    }
+}
+
+
+/**
+ * schedule shuffle
+ * send command to worker to send data
+ * if map task scheduled from src node to dst node,  ommit src node
+*/
+void Master::ShuffleSchedule() {
+    for(int i = 1; i <= conf.getNumReducer(); i++) {            // node i send, other node receive
+        if(tasks_info_[i].file_ids.empty()) {
+            continue;
+        }
+        for(int j = 1; j <= conf.getNumReducer(); j++) {        // send command to worker j
+            Command command;
+            if(j == i) {                                        // worker i send data to other worker
+                command.type = CommandType::Send;
+                for(int k = 1; k <= conf.getNumReducer(); k++) {
+                    if(k == i) {
+                        continue;
+                    }
+                    command.send_ids.emplace_back(k);
+                }
+            } else {                                            // receive data from node i
+                command.type = CommandType::Receive;
+                command.receive_id = i;
+            }
+            int command_size;
+            char* command_temp = SerializeCommand(command, command_size);
+            Send(worker_mailboxs_[j - 1], bw_config_->GetBW(BWType::MAX), command_temp, command_size);
+        }
+        // wait for all worker send/receive done
+        for(int j = 1; j <= conf.getNumReducer(); j++) {
+            delete mailbox_->get<unsigned char>();
+        }
+    }
+
+    // end of shuffle, send end command to all workers
+    for(int i = 1; i <= conf.getNumReducer(); i++) {
+        Command command;
+        command.type = CommandType::End;
+        int command_size;
+        char* command_temp = SerializeCommand(command, command_size);
+        Send(worker_mailboxs_[i - 1], bw_config_->GetBW(BWType::MAX), command_temp, command_size);
+    }
+}
+
+void Master::ReduceSchedule() {
+
 }

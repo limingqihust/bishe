@@ -16,7 +16,14 @@ struct UtilityInfo {
         return "time: " + std::to_string(time) + " network_load: " + std::to_string(network_load) + " computation_load: " + std::to_string(computation_load); 
     }
 };
-
+struct TaskInfo {
+    std::vector<int> file_ids;                                  // file mapped to this node    
+    std::vector<std::pair<unsigned char*, unsigned char*>> partitions;
+};
+struct ScheduleInfo {
+    std::vector<std::pair<int, int>> map_schedule_info;
+    std::vector<std::pair<int, int>> reduce_schedule_info;
+};
 /**
  * 负责一个job的调度
 */
@@ -52,6 +59,12 @@ private:
     UtilityInfo TeraSort();
     UtilityInfo CodedTeraSort();
 
+    void InitTaskSchedule(const PartitionList* partition_list);
+    void TaskSchedule();
+    void MapSchedule();
+    void ShuffleSchedule();
+    void ReduceSchedule();
+
     MasterState state_;
     int id_;
     JobText job_text_;
@@ -67,6 +80,9 @@ private:
     std::atomic<int> r_;
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
+
+    // for task migrate
+    std::unordered_map<int, TaskInfo> tasks_info_;  // worker host id -> 
 };
 
 class MasterManager {
