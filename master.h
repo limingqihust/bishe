@@ -22,7 +22,7 @@ struct TaskInfo {
 };
 struct ScheduleInfo {
     std::vector<std::pair<int, int>> map_schedule_info;
-    std::vector<std::pair<int, int>> reduce_schedule_info;
+    std::pair<int, int> reduce_schedule_info = {-1, -1};
 };
 /**
  * 负责一个job的调度
@@ -83,6 +83,7 @@ private:
 
     // for task migrate
     std::unordered_map<int, TaskInfo> tasks_info_;  // worker host id -> 
+    ScheduleInfo schedule_info_;
 };
 
 class MasterManager {

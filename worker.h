@@ -58,6 +58,7 @@ private:
     void PrintLocalList();
     void PrintPartitionCollection();
     void PrintPartitionTxData();
+    void PrintPartitionRxData();
     void PrintInputPartitionCollection();
 
     void CodedTeraSort();

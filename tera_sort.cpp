@@ -160,44 +160,6 @@ void Worker::TeraSort() {
     // SHUFFLING PHASE
     ExecShuffle();
     unsigned int lineSize = conf->getLineSize();
-    // double shuffle_start = simgrid::s4u::Engine::get_clock();
-    // for (unsigned int i = 1; i <= conf->getNumReducer(); i++) {
-    //     if (i == host_id_) {  // should send to other worker
-    //         // wait for master permission to send data
-    //         delete mailbox_->get<unsigned char>();
-    //         // Sending from node i
-    //         for (unsigned int j = 1; j <= conf->getNumReducer(); j++) {
-    //             if (j == i) {
-    //                 continue;
-    //             }
-    //             TxData& txData = partitionTxData[j - 1];
-    //             auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[j - 1] + ":" +
-    //                                                           std::to_string(worker_partener_ids_[j - 1]));
-    //             Send(mailbox, bw_config_->GetBW(BWType::W_W), new int(txData.numLine), sizeof(int));
-    //             unsigned char* data_temp = new unsigned char[txData.numLine * lineSize];
-    //             memcpy(data_temp, txData.data, txData.numLine * lineSize);
-    //             Send(mailbox, bw_config_->GetBW(BWType::W_W), data_temp, txData.numLine * lineSize);
-    //             delete[] txData.data;
-    //             // MPI_Send( &( txData.numLine ), 1, MPI_UNSIGNED_LONG_LONG, j, 0, MPI_COMM_WORLD );
-    //             // MPI_Send( txData.data, txData.numLine * lineSize, MPI_UNSIGNED_CHAR, j, 0, MPI_COMM_WORLD );
-    //         }
-
-    //     } else {  // receive data from worker i
-    //         TxData& rxData = partitionRxData[i - 1];
-    //         int* len_temp = mailbox_->get<int>();
-    //         rxData.numLine = *len_temp;
-    //         delete len_temp;
-    //         rxData.data = new unsigned char[rxData.numLine * lineSize];
-    //         unsigned char* data_temp = mailbox_->get<unsigned char>();
-    //         memcpy(rxData.data, data_temp, rxData.numLine * lineSize);
-    //         delete[] data_temp;
-    //         // receive data from worker i done, notify master that i am done
-    //         Send(master_mailbox_, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
-    //     }
-    // }
-    // auto shuffle_end = simgrid::s4u::Engine::get_clock();
-    // Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_end - shuffle_start), sizeof(double));
-    // delete mailbox_->get<unsigned char>();
 
     // UNPACK PHASE
     auto unpack_start = std::chrono::high_resolution_clock::now();
@@ -244,45 +206,54 @@ void Worker::TeraSort() {
 void Worker::ExecMap() {
     auto map_start = std::chrono::high_resolution_clock::now();
 
-    // READ INPUT FILE AND PARTITION DATA
-    char filePath[MAX_FILE_PATH];
-    
-    // receive map task from master
-    char* command_temp = mailbox_->get<char>();
-    const Command command = ParseCommand(command_temp);
-    assert(command.type == CommandType::Map);
-    const std::vector<int> file_ids = command.file_ids;
-    assert(file_ids.size() == 1);
-    sprintf(filePath, "%s_%d", conf->getInputPath(), file_ids[0]);
-    ifstream inputFile(filePath, ios::in | ios::binary | ios::ate);
-    if (!inputFile.is_open()) {
-        LOG_ERROR("[worker] my_host_name: %s, id: %d, cannot open file %s", my_host_name_.c_str(), id_,
-                  conf->getInputPath());
-        assert(false);
-    }
-
-    int fileSize = inputFile.tellg();
-    unsigned long int lineSize = conf->getLineSize();
-    unsigned long int numLine = fileSize / lineSize;
-    inputFile.seekg(0, ios::beg);
-
     // Build trie
     unsigned char prefix[conf->getKeySize()];
     trie = buildTrie(&partitionList, 0, partitionList.size(), prefix, 0, 2);
-
+    // READ INPUT FILE AND PARTITION DATA
+    // receive map task from master
+    char* command_temp = mailbox_->get<char>();
+    LOG_INFO("[worker] id: %d receive command: %s", host_id_, command_temp);
+    const Command command = ParseCommand(command_temp);
+    assert(command.type == CommandType::Map);
+    const std::vector<int> file_ids = command.file_ids;
+    
     // Create lists of lines
     for (unsigned int i = 0; i < conf->getNumReducer(); i++) {
-        partitionCollection.insert(pair<unsigned int, LineList*>(i, new LineList));
+        partitionCollection.insert(pair<unsigned int, LineList*>(i, new LineList)); // worker id --> data need route to this worker
     }
-    // MAP
-    // Put each line to associated collection according to partition list
-    for (unsigned long i = 0; i < numLine; i++) {
-        unsigned char* buff = new unsigned char[lineSize];
-        inputFile.read((char*)buff, lineSize);
-        unsigned int wid = trie->findPartition(buff);
-        partitionCollection.at(wid)->push_back(buff);
+    for (auto file_id: file_ids) {
+        char filePath[MAX_FILE_PATH];
+        sprintf(filePath, "%s_%d", conf->getInputPath(), file_id);
+        ifstream inputFile(filePath, ios::in | ios::binary | ios::ate);
+        if (!inputFile.is_open()) {
+            LOG_ERROR("[worker] my_host_name: %s, id: %d, cannot open file %s", my_host_name_.c_str(), id_,
+                    conf->getInputPath());
+            assert(false);
+        }
+        int fileSize = inputFile.tellg();
+        unsigned long int lineSize = conf->getLineSize();
+        unsigned long int numLine = fileSize / lineSize;
+        inputFile.seekg(0, ios::beg);
+        // PartitionCollection& pc = inputPartitionCollection[file_id];
+
+        // // Create lists of lines
+        // for (unsigned int i = 0; i < conf->getNumReducer(); i++) {
+        //     pc[i] = new LineList;
+        // }
+        // MAP
+        // Put each line to associated collection according to partition list
+        for (unsigned long i = 0; i < numLine; i++) {
+            unsigned char* buff = new unsigned char[lineSize];
+            inputFile.read((char*)buff, lineSize);
+            unsigned int wid = trie->findPartition(buff);
+            partitionCollection.at(wid)->push_back(buff);
+
+            // assert(pc.find(wid) != pc.end());
+            // pc[wid]->push_back(buff);
+        }
+        inputFile.close();
     }
-    inputFile.close();
+    
     auto map_end = std::chrono::high_resolution_clock::now();
     auto rTime = std::chrono::duration_cast<std::chrono::duration<double>>(map_end - map_start).count();
     // LOG_INFO("[worker] my_host_name: %s, id: %d send map time %lf to master", my_host_name_.c_str(), id_, rTime);
@@ -293,11 +264,15 @@ void Worker::ExecMap() {
     // PACK
     auto pack_start = std::chrono::high_resolution_clock::now();
     // Packet partitioned data to a chunk
+    if(file_ids.empty()) {
+        goto PACK_DONE;
+    }
     for (unsigned int i = 0; i < conf->getNumReducer(); i++) {
         if (i == host_id_ - 1) {
             continue;
         }
         unsigned long long numLine = partitionCollection[i]->size();
+        unsigned long int lineSize = conf->getLineSize();
         partitionTxData[i].data = new unsigned char[numLine * lineSize];
         partitionTxData[i].numLine = numLine;
         auto lit = partitionCollection[i]->begin();
@@ -310,6 +285,7 @@ void Worker::ExecMap() {
     }
     // LOG_INFO("[worker] host_id: %d print partitionTxData", host_id_);
     // PrintPartitionTxData();
+PACK_DONE:
     auto pack_end = std::chrono::high_resolution_clock::now();
     rTime = std::chrono::duration_cast<std::chrono::duration<double>>(pack_end - pack_start).count();
     // MPI_Gather(&rTime, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -384,9 +360,52 @@ void Worker::ExecShuffle() {
         const Command command = ParseCommand(command_temp);
         if (command.type == CommandType::End) {
             break;
+        } else if (command.type == CommandType::Omit) {
+            ; // omit data
         } else if (command.type == CommandType::Send) {                 // send data
-            for (auto send_id: command.send_ids) {
-                LOG_INFO("[worker] id: %d send data to id: %d", host_id_, send_id);
+            for (int send_id = 1; send_id <= conf->getNumReducer(); send_id++) {
+                if (send_id == host_id_) {
+                    if (send_id == command.reduce_schedule_info.second) {
+                        TxData& txData = partitionTxData[command.reduce_schedule_info.first - 1];
+                        for(int i = 0; i < txData.numLine; i++) {
+                            unsigned char* data = new unsigned char [lineSize];
+                            memcpy(data, txData.data + i * lineSize, lineSize);
+                            localList.push_back(data);
+                        }
+                    }
+                    continue;   // node do not need to send data to itself, unless its reduce task is scheduled
+                } else if (send_id == command.reduce_schedule_info.first) {
+                    continue;   // this id omit to receive data
+                } else if (send_id == command.reduce_schedule_info.second) {
+                    // send two data
+                    TxData& txData0 = partitionTxData[send_id - 1];
+                    TxData& txData1 = partitionTxData[command.reduce_schedule_info.first - 1];
+                    auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[send_id - 1] + ":" +
+                                                              std::to_string(worker_partener_ids_[send_id - 1]));
+
+                    unsigned char* data_temp;
+                    int data_line;
+                    if (host_id_ == command.reduce_schedule_info.first) { // if reduce task in this node is schedule to other worker, send local data to dst_node
+                        data_temp = new unsigned char [(txData0.numLine + (*partitionCollection[host_id_ - 1]).size()) * lineSize];
+                        data_line = txData0.numLine + (*partitionCollection[host_id_ - 1]).size();
+                        LOG_INFO("id: %d, partitionCollection line: %d", host_id_, (*partitionCollection[host_id_ - 1]).size());
+                        memcpy(data_temp, txData0.data, txData0.numLine * lineSize);
+                        for(int i = 0; i < (*partitionCollection[host_id_ - 1]).size(); i++) {
+                            memcpy(data_temp + txData0.numLine * lineSize + i * lineSize, (*partitionCollection[host_id_ - 1])[i], lineSize);
+                        } 
+                    } else {
+                        data_temp = new unsigned char[(txData0.numLine + txData1.numLine) * lineSize];
+                        data_line = txData0.numLine + txData1.numLine;
+                        memcpy(data_temp, txData0.data, txData0.numLine * lineSize);
+                        memcpy(data_temp + txData0.numLine * lineSize, txData1.data, txData1.numLine * lineSize);
+                    }
+                    LOG_INFO("[worker] id: %d send data to id: %d, data_line: %d", host_id_, send_id, data_line);
+                    Send(mailbox, bw_config_->GetBW(BWType::W_W), new int(data_line), sizeof(int));                    
+                    Send(mailbox, bw_config_->GetBW(BWType::W_W), data_temp, data_line * lineSize);
+                    delete [] txData0.data;
+                    delete [] txData1.data;
+                    continue;
+                }
                 TxData& txData = partitionTxData[send_id - 1];
                 auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[send_id - 1] + ":" +
                                                               std::to_string(worker_partener_ids_[send_id - 1]));

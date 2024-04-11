@@ -253,11 +253,11 @@ void Master::InitTaskSchedule(const PartitionList* partition_list) {
  * update task_info_(used when shuffle)
 */
 void Master::TaskSchedule() {
-    return ;
     // 1. select src_id, dst_id according node computation load and network load
     int src_id = 1;
     int dst_id = 2;
-    MasterState task_type = MasterState::Mapping;
+    // MasterState task_type = MasterState::Mapping;
+    MasterState task_type = MasterState::Reducing;
 
     // 2. update tasks_info_
     assert(1 <= src_id && src_id <= worker_host_num_ && 1 <= dst_id && dst_id <= worker_host_num_);
@@ -272,24 +272,11 @@ void Master::TaskSchedule() {
         for(auto file_id : file_ids) {
             tasks_info_[dst_id].file_ids.emplace_back(file_id);
         }
-
+        tasks_info_[src_id].file_ids.clear();
     } else if (task_type == MasterState::Reducing) {
         // dst node should exec reduce on parition on dst node
-        partitions = tasks_info_[src_id].partitions;
-        for(auto partition : partitions) {
-            tasks_info_[dst_id].partitions.emplace_back(partition);
-        }
+        schedule_info_.reduce_schedule_info = {src_id, dst_id};
     } 
-
-
-
-    // 3. send info needed to src node and dst node
-    if (task_type == MasterState::Mapping) {
-        // route file in src node to dst node
-    } else if (task_type == MasterState::Reducing) {
-
-    }
-
 }
 
 
@@ -307,15 +294,6 @@ void Master::MapSchedule() {
         char* command_temp = SerializeCommand(command, command_size);
         LOG_INFO("[master] send map task to worker: %d, task info: %s", i, command_temp);
         Send(worker_mailboxs_[i - 1], bw_config_->GetBW(BWType::MAX), command_temp, command_size);
-        // command += "MapTask:";
-        // for(auto file_id: tasks_info_[i].file_ids) {
-        //     command += std::to_string(file_id);
-        // }
-
-        // char* command_temp = new char [command.size()];
-        // memcpy(command_temp, command.c_str(), command.size());
-        // LOG_INFO("[master] send map task to worker: %d, task info: %s", i, command.c_str());
-        // Send(worker_mailboxs_[i - 1], bw_config_->GetBW(BWType::MAX), command_temp, command.size());
     }
 }
 
@@ -324,22 +302,22 @@ void Master::MapSchedule() {
  * schedule shuffle
  * send command to worker to send data
  * if map task scheduled from src node to dst node,  ommit src node
+ * If reduce task scheduled from src node to dst node, 
+ * notify to all worker thatdata needed to be routed to src node should routed to dst node
 */
 void Master::ShuffleSchedule() {
+    std::pair<int, int> reduce_schedule_info = schedule_info_.reduce_schedule_info;
     for(int i = 1; i <= conf.getNumReducer(); i++) {            // node i send, other node receive
-        if(tasks_info_[i].file_ids.empty()) {
+        if(tasks_info_[i].file_ids.empty()) {                   // node i map task is schedule to other node, nothing to send
             continue;
         }
         for(int j = 1; j <= conf.getNumReducer(); j++) {        // send command to worker j
             Command command;
             if(j == i) {                                        // worker i send data to other worker
                 command.type = CommandType::Send;
-                for(int k = 1; k <= conf.getNumReducer(); k++) {
-                    if(k == i) {
-                        continue;
-                    }
-                    command.send_ids.emplace_back(k);
-                }
+                command.reduce_schedule_info = schedule_info_.reduce_schedule_info;
+            } else if (j == schedule_info_.reduce_schedule_info.first) {   // omit
+                command.type = CommandType::Omit;
             } else {                                            // receive data from node i
                 command.type = CommandType::Receive;
                 command.receive_id = i;

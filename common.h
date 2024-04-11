@@ -10,13 +10,13 @@
 #include "logger.h"
 
 enum class CommandType {
-    Map, Send, Receive, End
+    Map, Send, Receive, Omit, End
 };
 struct Command {
     CommandType type;
     std::vector<int> file_ids;
-    std::vector<int> send_ids;
     int receive_id;
+    std::pair<int, int> reduce_schedule_info;   // data routed to first originly should routed to second
 };
 
 /**
@@ -37,13 +37,16 @@ static Command ParseCommand(const char* command_temp) {
         }
     } else if (token == "Send") {               // map done, send data to node according to partitions 
         res.type = CommandType::Send;
-        while(std::getline(iss, token, ':')) {
-            res.send_ids.emplace_back(stoi(token));
-        }
+        assert(std::getline(iss, token, ':'));
+        res.reduce_schedule_info.first = stoi(token);
+        assert(std::getline(iss, token, ':'));
+        res.reduce_schedule_info.second = stoi(token);
     } else if (token == "Receive") {            // receive from node
         res.type = CommandType::Receive;
         assert(std::getline(iss, token, ':'));
         res.receive_id = stoi(token);
+    } else if (token == "Omit") {
+        res.type = CommandType::Omit;
     } else if (token == "End") {
         res.type = CommandType::End;
     } else {
@@ -66,12 +69,12 @@ static char* SerializeCommand(const Command& command, int& command_size) {
         }
     } else if (command.type == CommandType::Send) {
         command_str += "Send";
-        for (auto send_id: command.send_ids) {
-            command_str += (":" + std::to_string(send_id));
-        }
+        command_str += (":" + std::to_string(command.reduce_schedule_info.first) + ":" + std::to_string(command.reduce_schedule_info.second));
     } else if (command.type == CommandType::Receive) {
         command_str += "Receive";
         command_str += (":" + std::to_string(command.receive_id));
+    } else if (command.type == CommandType::Omit) {
+        command_str += "Omit";
     } else if (command.type == CommandType::End) {
         command_str += "End";
     } else {
