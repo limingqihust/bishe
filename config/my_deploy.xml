@@ -2,8 +2,9 @@
 <!DOCTYPE platform SYSTEM "https://simgrid.org/simgrid.dtd">
 <platform version="4.1">
   <!-- The master actor (with some arguments) -->
-  <actor host="node0" function="my_master">
+  <actor host="node0:0" function="my_master">
     <!-- name of hosts on which the workers are running -->
+    <argument value="node0" />          <!-- prefix of own host -->
     <argument value="5" />              <!-- master num of master node -->
     <argument value="6" />              <!-- worker host num -->
     <argument value="node1" />
@@ -14,8 +15,9 @@
     <argument value="node6" />
   </actor>
   <!-- The worker actors (with no argument) -->
-  <actor host="node1" function="my_worker">
-    <argument value="node0" />          <!-- host name of master -->
+  <actor host="node1:0" function="my_worker">
+    <argument value="node1" />          <!-- prefix of own host -->
+    <argument value="node0" />          <!-- prefix of master -->
     <argument value="5" />              <!-- num of workers in a worker node -->
     <argument value="1" />              <!-- worker host id -->
     <argument value="node1" />
@@ -25,8 +27,9 @@
     <argument value="node5" />
     <argument value="node6" />
   </actor>
-  <actor host="node2" function="my_worker">
-    <argument value="node0" />          <!-- host name of master -->
+  <actor host="node2:0" function="my_worker">
+    <argument value="node2" />          <!-- prefix of own host-->
+    <argument value="node0" />          <!-- prefix of master -->
     <argument value="5" />              <!-- num of workers in a worker node -->
     <argument value="2" />              <!-- worker host id -->
     <argument value="node1" />
@@ -36,8 +39,9 @@
     <argument value="node5" />
     <argument value="node6" />
   </actor>
-  <actor host="node3" function="my_worker">
-    <argument value="node0" />          <!-- host name of master -->
+  <actor host="node3:0" function="my_worker">
+    <argument value="node3" />           <!-- prefix of own host-->
+    <argument value="node0" />          <!-- prefix of master -->
     <argument value="5" />              <!-- num of workers in a worker node -->
     <argument value="3" />              <!-- worker host id -->
     <argument value="node1" />
@@ -47,8 +51,9 @@
     <argument value="node5" />
     <argument value="node6" />
   </actor>
-  <actor host="node4" function="my_worker">
-    <argument value="node0" />          <!-- host name of master -->
+  <actor host="node4:0" function="my_worker">
+    <argument value="node4" />          <!-- prefix of own host-->
+    <argument value="node0" />          <!-- prefix of master -->
     <argument value="5" />              <!-- num of workers in a worker node -->
     <argument value="4" />              <!-- worker host id -->
     <argument value="node1" />
@@ -58,8 +63,9 @@
     <argument value="node5" />
     <argument value="node6" />
   </actor>
-  <actor host="node5" function="my_worker">
-    <argument value="node0" />          <!-- host name of master -->
+  <actor host="node5:0" function="my_worker">
+    <argument value="node5" />          <!-- prefix of own host-->
+    <argument value="node0" />          <!-- prefix of master -->
     <argument value="5" />              <!-- num of workers in a worker node -->
     <argument value="5" />              <!-- worker host id -->
     <argument value="node1" />
@@ -69,8 +75,9 @@
     <argument value="node5" />
     <argument value="node6" />
   </actor>
-  <actor host="node6" function="my_worker">
-    <argument value="node0" />          <!-- host name of master -->
+  <actor host="node6:0" function="my_worker">
+    <argument value="node6" />          <!-- prefix of own host-->
+    <argument value="node0" />          <!-- prefix of master -->
     <argument value="5" />              <!-- num of workers in a worker node -->
     <argument value="6" />              <!-- worker host id -->
     <argument value="node1" />

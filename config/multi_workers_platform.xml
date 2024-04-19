@@ -1,0 +1,85 @@
+<?xml version='1.0'?>
+<!DOCTYPE platform SYSTEM "http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd">
+<platform version="4.1">
+  	<zone id="world" routing="Full">
+		<cluster id="cluster0" prefix="node0:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+		<cluster id="cluster1" prefix="node1:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+		<cluster id="cluster2" prefix="node2:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+		<cluster id="cluster3" prefix="node3:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+		<cluster id="cluster4" prefix="node4:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+		<cluster id="cluster5" prefix="node5:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+		<cluster id="cluster6" prefix="node6:" radical="0-5" suffix="" speed="1Gf" bw="125GBps" lat="50us" bb_bw="2.25GBps" bb_lat="500us"/>
+  
+  		<link bandwidth="1.25GBps" id="backbone" latency="500us" sharing_policy="FATPIPE" />
+
+  
+		<zoneRoute dst="cluster0" gw_dst="node0:0" gw_src="node1:0" src="cluster1">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster0" gw_dst="node0:0" gw_src="node2:0" src="cluster2">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster0" gw_dst="node0:0" gw_src="node3:0" src="cluster3">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster0" gw_dst="node0:0" gw_src="node4:0" src="cluster4">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster0" gw_dst="node0:0" gw_src="node5:0" src="cluster5">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster0" gw_dst="node0:0" gw_src="node6:0" src="cluster6">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+
+		<zoneRoute dst="cluster1" gw_dst="node1:0" gw_src="node2:0" src="cluster2">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster1" gw_dst="node1:0" gw_src="node3:0" src="cluster3">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster1" gw_dst="node1:0" gw_src="node4:0" src="cluster4">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster1" gw_dst="node1:0" gw_src="node5:0" src="cluster5">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster1" gw_dst="node1:0" gw_src="node6:0" src="cluster6">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+
+		<zoneRoute dst="cluster2" gw_dst="node2:0" gw_src="node3:0" src="cluster3">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster2" gw_dst="node2:0" gw_src="node4:0" src="cluster4">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster2" gw_dst="node2:0" gw_src="node5:0" src="cluster5">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster2" gw_dst="node2:0" gw_src="node6:0" src="cluster6">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+
+		<zoneRoute dst="cluster3" gw_dst="node3:0" gw_src="node4:0" src="cluster4">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster3" gw_dst="node3:0" gw_src="node5:0" src="cluster5">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster3" gw_dst="node3:0" gw_src="node6:0" src="cluster6">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+
+		<zoneRoute dst="cluster4" gw_dst="node4:0" gw_src="node5:0" src="cluster5">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+		<zoneRoute dst="cluster4" gw_dst="node4:0" gw_src="node6:0" src="cluster6">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+
+		<zoneRoute dst="cluster5" gw_dst="node5:0" gw_src="node6:0" src="cluster6">
+			<link_ctn id="backbone" />
+		</zoneRoute>
+  	</zone>
+</platform>

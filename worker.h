@@ -16,19 +16,19 @@ enum class WorkerState { Free, Mapping, Reducing, DONE };
  */
 class Worker {
 public:
-    Worker(std::string my_host_name, std::string master_host_name, int worker_host_num,
-           std::vector<std::string> worker_host_names, int id, int host_id,
+    Worker(std::string my_host_name_prefix, std::string master_host_name_prefix, int worker_host_num,
+           std::vector<std::string> worker_host_name_prefixs, int id, int host_id,
            std::shared_ptr<BandWidthConfigModule> bw_config)
         : state_(WorkerState::Free),
           id_(id),
-          my_host_name_(my_host_name),
-          master_host_name_(master_host_name),
+          my_host_name_prefix_(my_host_name_prefix),
+          master_host_name_prefix_(master_host_name_prefix),
           worker_host_num_(worker_host_num),
-          worker_host_names_(worker_host_names),
+          worker_host_name_prefixs_(worker_host_name_prefixs),
           host_id_(host_id),
           bw_config_(bw_config) {
-        mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_ + ":" + std::to_string(id));
-        barrier_mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name + ":" + std::to_string(id) + ":barrier");
+        mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":" + std::to_string(id));
+        barrier_mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":" + std::to_string(id) + ":barrier");
     }
 
     void DoJob();
@@ -38,7 +38,7 @@ public:
     void SetWorkerState(WorkerState state) { state_ = state; }
 
     void SetMasterMailbox(int master_id) {
-        master_mailbox_ = simgrid::s4u::Mailbox::by_name(master_host_name_ + ":" + std::to_string(master_id));
+        master_mailbox_ = simgrid::s4u::Mailbox::by_name(master_host_name_prefix_ + ":" + std::to_string(master_id));
     }
 
     void SetJobText(const JobText& job_text) { job_text_ = job_text; }
@@ -71,10 +71,10 @@ private:
     WorkerState state_;
     int id_;
     int host_id_;
-    std::string my_host_name_;
-    std::string master_host_name_;
+    std::string my_host_name_prefix_;
+    std::string master_host_name_prefix_;
     int worker_host_num_;
-    std::vector<std::string> worker_host_names_;
+    std::vector<std::string> worker_host_name_prefixs_;
     std::vector<int> worker_partener_ids_;
     simgrid::s4u::Mailbox* mailbox_;          // receive message from master
     simgrid::s4u::Mailbox* master_mailbox_;   // send message to master
@@ -106,33 +106,33 @@ private:
  */
 class WorkerManager {
 public:
-    WorkerManager(std::string my_host_name, std::string master_host_name, int id, int worker_num, int worker_host_num,
-                  std::vector<std::string> worker_host_names, std::shared_ptr<BandWidthConfigModule> bw_config)
-        : my_host_name_(my_host_name),
-          master_host_name_(master_host_name),
+    WorkerManager(std::string my_host_name_prefix, std::string master_host_name_prefix, int id, int worker_num, int worker_host_num,
+                  std::vector<std::string> worker_host_name_prefixs, std::shared_ptr<BandWidthConfigModule> bw_config)
+        : my_host_name_prefix_(my_host_name_prefix),
+          master_host_name_prefix_(master_host_name_prefix),
           worker_num_(worker_num),
-          worker_host_names_(worker_host_names),
+          worker_host_name_prefixs_(worker_host_name_prefixs),
           id_(id),
           bw_config_(bw_config) {
-        assert(worker_host_num == worker_host_names_.size());
+        assert(worker_host_num == worker_host_name_prefixs_.size());
         for (int i = 0; i < worker_num; i++) {
-            workers_.emplace_back(std::make_shared<Worker>(my_host_name, master_host_name, worker_host_num,
-                                                           worker_host_names, i, id, bw_config));
+            workers_.emplace_back(std::make_shared<Worker>(my_host_name_prefix, master_host_name_prefix, worker_host_num,
+                                                           worker_host_name_prefixs, i, id, bw_config));
             worker_thds_.emplace_back(std::thread());
         }
 
-        mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_);
-        master_host_mailbox_ = simgrid::s4u::Mailbox::by_name(master_host_name_);
+        mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix_ + ":0");
+        master_host_mailbox_ = simgrid::s4u::Mailbox::by_name(master_host_name_prefix_ + ":0");
     }
 
     void Run();
 
 private:
     int FindFreeWorker();
-    std::string my_host_name_;      // name of this worker node
-    std::string master_host_name_;  // name of master node
+    std::string my_host_name_prefix_;      // name of this worker node
+    std::string master_host_name_prefix_;  // name of master node
     int worker_num_;
-    std::vector<std::string> worker_host_names_;
+    std::vector<std::string> worker_host_name_prefixs_;
     int id_;
     std::mutex mutex_;              // need to lock mutex_ before request worker(modify worker state)
     std::vector<std::shared_ptr<Worker>> workers_;

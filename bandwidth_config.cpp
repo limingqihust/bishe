@@ -14,6 +14,9 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
         assert(false && "could open bandwidth config file");
     }
     while (std::getline(input, line)) {
+        if (line[0] == '#') {
+            continue;
+        }
         std::istringstream iss(line);
         std::vector<double> temp;
         double token;

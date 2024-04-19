@@ -131,7 +131,7 @@ void Worker::CodedTeraSort() {
     LOG_INFO(
         "[worker] my_host_name: %s, id: %d, CodedTeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
         "intpuf_file_prefix: %s",
-        my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+        my_host_name_prefix_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
         job_text_.input_file_prefix.c_str());
     // RECEIVE CONFIGURATION FROM MASTER
     // coded_conf = new CodedConfiguration;
@@ -155,7 +155,7 @@ void Worker::CodedTeraSort() {
     auto rTime = std::chrono::duration_cast<std::chrono::duration<double>>(codegen_end - codegen_start).count();
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
-
+    LOG_INFO("[worker] host name: %s generate code done", my_host_name_prefix_.c_str());
     // EXECUTE MAP PHASE
     auto map_start = std::chrono::high_resolution_clock::now();
     ExecCodedMap();
@@ -612,7 +612,7 @@ void Worker::SendEncodeData(EnData& endata, std::vector<int> dst_ids) {
         if (id == host_id_) {
             continue;
         }
-        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" +
+        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_name_prefixs_[id - 1] + ":" +
                                                       std::to_string(worker_partener_ids_[id - 1]));
         Send(mailbox, bw_config_->GetBW(BWType::BRAODCAST), new unsigned long long(endata.size),
              sizeof(unsigned long long));
@@ -629,7 +629,7 @@ void Worker::SendEncodeData(EnData& endata, std::vector<int> dst_ids) {
         if (id == host_id_) {
             continue;
         }
-        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[id - 1] + ":" +
+        auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_name_prefixs_[id - 1] + ":" +
                                                       std::to_string(worker_partener_ids_[id - 1]));
         mailbox->put(new unsigned long long(endata.metaSize), sizeof(unsigned long long));
         unsigned char* data_temp = new unsigned char[endata.metaSize];

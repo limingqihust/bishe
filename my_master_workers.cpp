@@ -8,6 +8,32 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(s4u_app_masterworker, "Messages specific for this e
 // init bandwidth config
 auto bw_config = std::make_shared<BandWidthConfigModule>("./config/bandwidth.config");
 
+/**
+ * 
+ *         / node0:1
+ *         - node0:2 
+ * node0:0 - node0:3
+ *         - node0:4
+ *         \ node0:5
+ * 
+*/
+static void my_master_manager(std::vector<std::string> args) {
+    // init job_queue
+    auto job_queue = std::make_shared<ConcurrencyQueue>("./config/test_input");
+}
+
+/**
+ *         / node1:1
+ *         - node1:2
+ * node1:0 - node1:3
+ *         - node1:4
+ *         \ node1:5
+*/
+static void my_worker_manager(std::vector<std::string> args) {
+
+}
+
+
 static void my_master(std::vector<std::string> args) {
     assert(args.size() >= 4);
 
@@ -15,16 +41,15 @@ static void my_master(std::vector<std::string> args) {
     auto job_queue = std::make_shared<ConcurrencyQueue>("./config/test_input");
 
     // init master_manager
-    simgrid::s4u::Host* my_host = simgrid::s4u::this_actor::get_host();
-    std::string my_host_name = my_host->get_name();
-    int master_num = std::stoi(args[1]);
-    int worker_host_num = std::stoi(args[2]);
+    const std::string my_host_name_prefix = args[1];
+    int master_num = std::stoi(args[2]);
+    int worker_host_num = std::stoi(args[3]);
     std::vector<std::string> worker_host_names;
-    for (int i = 3; i < args.size(); i++) {
+    for (int i = 4; i < args.size(); i++) {
         worker_host_names.emplace_back(args[i]);
     }
     auto master_manager =
-        std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name, worker_host_names, bw_config);
+        std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name_prefix, worker_host_names, bw_config);
 
     // start OnlineLearningModule
     auto online_learning_module =
@@ -47,15 +72,15 @@ static void my_worker(std::vector<std::string> args) {
     assert(args.size() >= 5);
 
     simgrid::s4u::Host* my_host = simgrid::s4u::this_actor::get_host();
-    std::string my_host_name = my_host->get_name();
-    std::string master_host_name = args[1];
-    int worker_num = std::stoi(args[2]);
-    int id = std::stoi(args[3]);
+    const std::string my_host_name_prefix = args[1];
+    std::string master_host_name_prefix = args[2];
+    int worker_num = std::stoi(args[3]);
+    int id = std::stoi(args[4]);
     std::vector<std::string> worker_host_names;
-    for (int i = 4; i < args.size(); i++) {
+    for (int i = 5; i < args.size(); i++) {
         worker_host_names.emplace_back(args[i]);
     }
-    auto worker_manager = std::make_shared<WorkerManager>(my_host_name, master_host_name, id, worker_num,
+    auto worker_manager = std::make_shared<WorkerManager>(my_host_name_prefix, master_host_name_prefix, id, worker_num,
                                                           worker_host_names.size(), worker_host_names, bw_config);
     worker_manager->Run();
 }

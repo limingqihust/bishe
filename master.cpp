@@ -141,7 +141,7 @@ void Master::DoJob(const std::vector<int>& worker_ids) {
     worker_mailboxs_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
         worker_mailboxs_.push_back(
-            simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
+            simgrid::s4u::Mailbox::by_name(worker_host_name_prefixs_[i] + ":" + std::to_string(worker_ids[i])));
     }
 
     // notify worker_ids to all worker
@@ -175,7 +175,7 @@ UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
     worker_mailboxs_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
         worker_mailboxs_.push_back(
-            simgrid::s4u::Mailbox::by_name(worker_host_names_[i] + ":" + std::to_string(worker_ids[i])));
+            simgrid::s4u::Mailbox::by_name(worker_host_name_prefixs_[i] + ":" + std::to_string(worker_ids[i])));
     }
 
     // notify worker_ids to all worker

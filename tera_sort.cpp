@@ -128,7 +128,7 @@ void Worker::TeraSort() {
     LOG_INFO(
         "[worker] my_host_name: %s, id: %d, TeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
         "intpuf_file_prefix: %s",
-        my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+        my_host_name_prefix_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
         job_text_.input_file_prefix.c_str());  // RECEIVE CONFIGURATION FROM MASTER
     // conf = new Configuration;
     conf = new Configuration(job_text_.input_file_num, job_text_.reducer_num, job_text_.r, job_text_.input_file_prefix);
@@ -156,7 +156,7 @@ void Worker::TeraSort() {
                     continue;
                 }
                 TxData& txData = partitionTxData[j - 1];
-                auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_names_[j - 1] + ":" +
+                auto mailbox = simgrid::s4u::Mailbox::by_name(worker_host_name_prefixs_[j - 1] + ":" +
                                                               std::to_string(worker_partener_ids_[j - 1]));
                 Send(mailbox, bw_config_->GetBW(BWType::W_W), new int(txData.numLine), sizeof(int));
                 unsigned char* data_temp = new unsigned char[txData.numLine * lineSize];
@@ -234,7 +234,7 @@ void Worker::ExecMap() {
     sprintf(filePath, "%s_%d", conf->getInputPath(), host_id_ - 1);
     ifstream inputFile(filePath, ios::in | ios::binary | ios::ate);
     if (!inputFile.is_open()) {
-        LOG_ERROR("[worker] my_host_name: %s, id: %d, cannot open file %s", my_host_name_.c_str(), id_,
+        LOG_ERROR("[worker] my_host_name: %s, id: %d, cannot open file %s", my_host_name_prefix_.c_str(), id_,
                   conf->getInputPath());
         assert(false);
     }
