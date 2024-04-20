@@ -6,47 +6,42 @@
 void WorkerManager::Run() {
     while (true) {
         // 1. receive a request from master
-        LOG_INFO("[worker manager] my_host_name: %s wait for request from mailbox: %s", my_host_name_prefix_.c_str(), mailbox_->get_cname());
+        LOG_INFO("[worker manager] my_host_name_prefix: %s wait for request from master manager", my_host_name_prefix_.c_str());
         char* temp = mailbox_->get<char>();
-        LOG_INFO("[worker manager] my_host_name: %s receive request from master in mailbox:%s", my_host_name_prefix_.c_str(), mailbox_->get_cname());
+        LOG_INFO("[worker manager] my_host_name_prefix: %s receive request from master manager", my_host_name_prefix_.c_str());
         std::string info(temp);
-        delete [] temp;
-        int master_id;
-        JobText job_text = StringToJobText(master_id, info);
 
 
         // 2. find a free worker responsible for this job
         int worker_id = FindFreeWorker();
-        // workers_[worker_id] = std::make_shared<Worker>(my_host_name_, master_host_name_, worker_host_names_.size(),
-        //                                                    worker_host_names_, worker_id, id_, bw_config_);
-        workers_[worker_id]->SetMasterMailbox(master_id);
-        workers_[worker_id]->SetJobText(job_text);
-        // 3. notify worker id to master
-        LOG_INFO("[worker manager] host_name: %s choose worker id: %d, notify to mailbox: %s", my_host_name_prefix_.c_str(), worker_id, master_host_mailbox_->get_cname());
-        master_host_mailbox_->put(new int(worker_id), 4);
 
+        // 3. notify worker id to master manager
+        Send(master_host_mailbox_, bw_config_->GetBW(BWType::MAX), new int(worker_id), sizeof(int));
+        LOG_INFO("[worker manager] host_name: %s choose worker id: %d, notify to master manager", my_host_name_prefix_.c_str(), worker_id);
+        
         // 4. let this worker to do job(including map task, shuffle task and reduce task)
-        workers_[worker_id]->DoJob();
-
+        //    assign master_id and job_text to worker
+        auto mailbox = simgrid::s4u::Mailbox::by_name(my_host_name_prefix_ + ":" + std::to_string(worker_id));
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());
+        
         // 5. reset this worker
-        mutex_.lock();
-        workers_[worker_id]->SetWorkerState(WorkerState::DONE);
-        mutex_.unlock();
+        // TODO:
+
+        mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
+        mailbox->get<char>();
     }
 }
 
 int WorkerManager::FindFreeWorker() {
     while (true) {
         mutex_.lock();
-        for (int i = 0; i < worker_num_; i++) {
-            if (workers_[i]->GetWorkerState() == WorkerState::Free) {
-                workers_[i]->SetWorkerState(WorkerState::Mapping);
+        for (int i = 1; i <= worker_num_; i++) {
+            if (workers_state_[i] == WorkerState::Free) {
+                workers_state_[i] = WorkerState::Mapping;
                 mutex_.unlock();
                 return i;
-            } else if(workers_[i]->GetWorkerState() == WorkerState::DONE) {
-                // free it
-                // worker_thds_[i].join();
-                workers_[i]->SetWorkerState(WorkerState::Mapping);
+            } else if(workers_state_[i] == WorkerState::DONE) {
+                workers_state_[i] = WorkerState::Mapping;
                 mutex_.unlock();
                 return i;
             }
@@ -55,6 +50,43 @@ int WorkerManager::FindFreeWorker() {
         sleep(5);
     }
 }
+
+void Worker::Run() {
+    while(true) {
+        char* temp = mailbox_->get<char>();
+        std::string info(temp);
+        LOG_INFO("[worker] my_host_name_prefix: %s, id: %d, receive job: %s", my_host_name_prefix_.c_str(), id_, info.c_str());
+        delete [] temp;
+        int master_id;
+        JobText job_text = StringToJobText(master_id, info);
+        SetMasterMailbox(master_id);
+        SetJobText(job_text);
+        
+        // receive worker_partner_ids
+        LOG_INFO("[worker] my_host_name_prefix: %s, id: %d, wait for worker partner ids", my_host_name_prefix_.c_str(), id_);
+        int* worker_partener_ids_temp = mailbox_->get<int>();
+        worker_partener_ids_.clear();
+        for (int i = 0; i < worker_host_num_; i++) {
+            worker_partener_ids_.push_back(worker_partener_ids_temp[i]);
+            LOG_INFO("[worker] my_host_name_prefix: %s, id: %d recieve worker partner id: %d", my_host_name_prefix_.c_str(), id_, worker_partener_ids_temp[i]);
+        }
+        delete[] worker_partener_ids_temp;
+
+        switch(job_text_.type) {
+        case JobType::TeraSort:
+            TeraSort();
+            break;
+        case JobType::CodedTeraSort:
+            CodedTeraSort();
+            break;
+
+        auto mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
+        mailbox->get<char>();
+    }
+
+    }
+}
+
 
 /**
  * 1. return id of this worker to master for record

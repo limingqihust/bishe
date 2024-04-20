@@ -9,3 +9,12 @@
 #include <chrono>
 #include "logger.h"
 
+enum class State {
+    FREE, BUSY
+};
+
+struct MasterWorkerState {
+    std::mutex mutex;
+    std::unordered_map<int, State> master_state;
+    std::vector<int, std::unordered_map<int, State>> worker_state;
+};

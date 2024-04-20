@@ -32,6 +32,8 @@ public:
     }
 
     void DoJob();
+    // receive job from worker manager
+    void Run();
 
     WorkerState GetWorkerState() const { return state_; }
 
@@ -69,8 +71,8 @@ private:
     void RecvEncodeData(SubsetSId nsid);
 
     WorkerState state_;
-    int id_;
-    int host_id_;
+    int id_;                                // id of worker, from 1 to worker_num_
+    int host_id_;                           // id of worker host
     std::string my_host_name_prefix_;
     std::string master_host_name_prefix_;
     int worker_host_num_;
@@ -115,10 +117,8 @@ public:
           id_(id),
           bw_config_(bw_config) {
         assert(worker_host_num == worker_host_name_prefixs_.size());
-        for (int i = 0; i < worker_num; i++) {
-            workers_.emplace_back(std::make_shared<Worker>(my_host_name_prefix, master_host_name_prefix, worker_host_num,
-                                                           worker_host_name_prefixs, i, id, bw_config));
-            worker_thds_.emplace_back(std::thread());
+        for (int i = 1; i <= worker_num; i++) {
+            workers_state_[i] = WorkerState::Free;
         }
 
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix_ + ":0");
@@ -135,8 +135,7 @@ private:
     std::vector<std::string> worker_host_name_prefixs_;
     int id_;
     std::mutex mutex_;              // need to lock mutex_ before request worker(modify worker state)
-    std::vector<std::shared_ptr<Worker>> workers_;
-    std::vector<std::thread> worker_thds_;
+    std::unordered_map<int, WorkerState> workers_state_;
     simgrid::s4u::Mailbox* mailbox_;              // receive message from master manager
     simgrid::s4u::Mailbox* master_host_mailbox_;  // send message to master manager
 

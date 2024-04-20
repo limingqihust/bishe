@@ -20,60 +20,36 @@ auto bw_config = std::make_shared<BandWidthConfigModule>("./config/bandwidth.con
 static void my_master_manager(std::vector<std::string> args) {
     // init job_queue
     auto job_queue = std::make_shared<ConcurrencyQueue>("./config/test_input");
-}
-
-/**
- *         / node1:1
- *         - node1:2
- * node1:0 - node1:3
- *         - node1:4
- *         \ node1:5
-*/
-static void my_worker_manager(std::vector<std::string> args) {
-
-}
-
-
-static void my_master(std::vector<std::string> args) {
-    assert(args.size() >= 4);
-
-    // init job_queue
-    auto job_queue = std::make_shared<ConcurrencyQueue>("./config/test_input");
 
     // init master_manager
     const std::string my_host_name_prefix = args[1];
     int master_num = std::stoi(args[2]);
     int worker_host_num = std::stoi(args[3]);
-    std::vector<std::string> worker_host_names;
+    std::vector<std::string> worker_host_name_prefixs;
     for (int i = 4; i < args.size(); i++) {
-        worker_host_names.emplace_back(args[i]);
+        worker_host_name_prefixs.emplace_back(args[i]);
     }
     auto master_manager =
-        std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name_prefix, worker_host_names, bw_config);
+        std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name_prefix, worker_host_name_prefixs, bw_config);
 
-    // start OnlineLearningModule
-    auto online_learning_module =
-        std::make_shared<OnlineLearningModule>(master_manager, job_queue, 1, worker_host_num - 1, 1.0);
-    online_learning_module->DoWork();
-
-    // // do job now
-    // for(int i = 0; i < 4; i++) {
-    //     JobText job_text = job_queue->Pop();
-    //     master_manager->Run(job_text);
-    // }
-    while(true) {
-        sleep(1);
+    for (int i = 0; i < 1; i++) {
+        JobText job = job_queue->Pop();
+        master_manager->Run(job);
     }
 
     // online_learning_thd.join();
 }
 
-static void my_worker(std::vector<std::string> args) {
-    assert(args.size() >= 5);
-
-    simgrid::s4u::Host* my_host = simgrid::s4u::this_actor::get_host();
+/**
+ *             / node[1-6]:1
+ *             - node[1-6]:2
+ * node[1-6]:0 - node[1-6]:3
+ *             - node[1-6]:4
+ *             \ node[1-6]:5
+*/
+static void my_worker_manager(std::vector<std::string> args) {
     const std::string my_host_name_prefix = args[1];
-    std::string master_host_name_prefix = args[2];
+    const std::string master_host_name_prefix = args[2];
     int worker_num = std::stoi(args[3]);
     int id = std::stoi(args[4]);
     std::vector<std::string> worker_host_names;
@@ -84,10 +60,91 @@ static void my_worker(std::vector<std::string> args) {
                                                           worker_host_names.size(), worker_host_names, bw_config);
     worker_manager->Run();
 }
+
+static void my_master(std::vector<std::string> args) {
+    int id = std::stoi(args[1]);
+    const std::string my_host_name_prefix = args[2];
+    int worker_host_num = std::stoi(args[3]);
+    std::vector<std::string> worker_host_name_prefixs;
+    for (int i = 4; i < args.size(); i++) {
+        worker_host_name_prefixs.emplace_back(args[i]);
+    }
+    auto master =
+        std::make_shared<Master>(id, my_host_name_prefix, worker_host_num, worker_host_name_prefixs, bw_config);
+    master->Run();
+}
+
+static void my_worker(std::vector<std::string> args) {
+    int host_id = std::stoi(args[1]);
+    int id = std::stoi(args[2]);
+    const std::string my_host_name_prefix = args[3];
+    const std::string master_host_name_prefix = args[4];
+    int worker_host_num = std::stoi(args[5]);
+    std::vector<std::string> worker_host_name_prefixs;
+    for (int i = 6; i < args.size(); i++) {
+        worker_host_name_prefixs.emplace_back(args[i]);
+    }
+    auto worker = std::make_shared<Worker>(my_host_name_prefix, master_host_name_prefix, worker_host_num,
+                                           worker_host_name_prefixs, id, host_id, bw_config);
+    worker->Run();
+}
+
+// static void my_master(std::vector<std::string> args) {
+//     assert(args.size() >= 4);
+
+//     // init job_queue
+//     auto job_queue = std::make_shared<ConcurrencyQueue>("./config/test_input");
+
+//     // init master_manager
+//     const std::string my_host_name_prefix = args[1];
+//     int master_num = std::stoi(args[2]);
+//     int worker_host_num = std::stoi(args[3]);
+//     std::vector<std::string> worker_host_names;
+//     for (int i = 4; i < args.size(); i++) {
+//         worker_host_names.emplace_back(args[i]);
+//     }
+//     auto master_manager =
+//         std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name_prefix, worker_host_names, bw_config);
+
+//     // start OnlineLearningModule
+//     auto online_learning_module =
+//         std::make_shared<OnlineLearningModule>(master_manager, job_queue, 1, worker_host_num - 1, 1.0);
+//     online_learning_module->DoWork();
+
+//     // // do job now
+//     // for(int i = 0; i < 4; i++) {
+//     //     JobText job_text = job_queue->Pop();
+//     //     master_manager->Run(job_text);
+//     // }
+//     while (true) {
+//         sleep(1);
+//     }
+
+//     // online_learning_thd.join();
+// }
+
+// static void my_worker(std::vector<std::string> args) {
+//     assert(args.size() >= 5);
+
+//     simgrid::s4u::Host* my_host = simgrid::s4u::this_actor::get_host();
+//     const std::string my_host_name_prefix = args[1];
+//     std::string master_host_name_prefix = args[2];
+//     int worker_num = std::stoi(args[3]);
+//     int id = std::stoi(args[4]);
+//     std::vector<std::string> worker_host_names;
+//     for (int i = 5; i < args.size(); i++) {
+//         worker_host_names.emplace_back(args[i]);
+//     }
+//     auto worker_manager = std::make_shared<WorkerManager>(my_host_name_prefix, master_host_name_prefix, id, worker_num,
+//                                                           worker_host_names.size(), worker_host_names, bw_config);
+//     worker_manager->Run();
+// }
 int main(int argc, char* argv[]) {
     simgrid::s4u::Engine e(&argc, argv);
 
     /* Register the functions representing the actors */
+    e.register_function("my_master_manager", &my_master_manager);
+    e.register_function("my_worker_manager", &my_worker_manager);
     e.register_function("my_master", &my_master);
     e.register_function("my_worker", &my_worker);
 

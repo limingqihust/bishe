@@ -39,6 +39,8 @@ public:
 
     // 被MasterManager调用，接收一个Job
     void DoJob(const std::vector<int>& worker_ids);
+    // receive job from master manager
+    void Run();
 
     UtilityInfo DoJobTryR(std::vector<int> worker_ids, int r);
 
@@ -53,7 +55,7 @@ private:
     UtilityInfo CodedTeraSort();
 
     MasterState state_;
-    int id_;
+    int id_;                           // id of master, from 1 to master_num
     JobText job_text_;
     std::string my_host_name_prefix_;  // name of master node
     int worker_host_num_;
@@ -78,10 +80,8 @@ public:
           my_host_name_prefix_(my_host_name_prefix),
           worker_host_name_prefixs_(worker_host_name_prefixs),
           bw_config_(bw_config) {
-        for (int i = 0; i < master_num; i++) {
-            masters_.emplace_back(
-                std::make_shared<Master>(i, my_host_name_prefix, worker_host_num, worker_host_name_prefixs, bw_config));
-            master_thds_.emplace_back(std::thread());
+        for (int i = 1; i <= master_num; i++) {
+            masters_state_[i] = MasterState::Free;
         }
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":0");
         for (auto worker_host_name_prefix : worker_host_name_prefixs_) {
@@ -106,8 +106,6 @@ private:
     simgrid::s4u::Mailbox* mailbox_;                            // receive message from worker manager
     std::vector<simgrid::s4u::Mailbox*> worker_host_mailboxs_;  // communicate with worker managers
     std::mutex mutex_;                                          // lock before modify master state
-    std::vector<std::shared_ptr<Master>> masters_;
-    std::vector<std::thread> master_thds_;
-
+    std::unordered_map<int, MasterState> masters_state_;
     std::shared_ptr<BandWidthConfigModule> bw_config_;
 };
