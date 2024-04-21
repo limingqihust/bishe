@@ -32,9 +32,6 @@ void MasterManager::Run(JobText& job_text) {
     LOG_INFO("[master manager] route job: %s and worker ids to master id: %d", info.c_str(), master_id);
 
     // 4. reset this worker
-    // TODO:
-    mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
-    mailbox->get<char>();
 }
 
 /**
@@ -43,20 +40,16 @@ void MasterManager::Run(JobText& job_text) {
 */
 int MasterManager::FindFreeMaster() {
     while (true) {
-        mutex_.lock();
+        master_worker_state_->mutex.lock();
         for (int i = 1; i <= master_num_; i++) {
-            if (masters_state_[i] == MasterState::Free) {
-                masters_state_[i] = MasterState::Mapping;
-                mutex_.unlock();
-                return i;
-            } else if (masters_state_[i] == MasterState::Done) {
-                masters_state_[i] = MasterState::Mapping;
-                mutex_.unlock();
+            assert(master_worker_state_->master_state.find(i) != master_worker_state_->master_state.end());
+            if (master_worker_state_->master_state[i] == State::Free) {
+                master_worker_state_->master_state[i] = State::Busy;
+                master_worker_state_->mutex.unlock();
                 return i;
             }
         }
-        mutex_.unlock();
-        sleep(5);
+        master_worker_state_->mutex.unlock();
     }
 }
 
@@ -187,8 +180,12 @@ void Master::Run() {
                 break;
         }
 
-        auto mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
-        mailbox->get<char>();
+        // reset master
+        master_worker_state_->mutex.lock();
+        assert(master_worker_state_->master_state.find(id_) != master_worker_state_->master_state.end());
+        master_worker_state_->master_state[id_] = State::Free;
+        master_worker_state_->mutex.unlock();
+        LOG_INFO("[master] id: %d reset", id_);
     }
 }
 

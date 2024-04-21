@@ -2,10 +2,10 @@
 #include <thread>
 #include "bandwidth_config.h"
 #include "common.h"
+#include "job_text.h"
 #include "tera_sort/CodedConfiguration.h"
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
-#include "job_text.h"
 enum class MasterState { Free, Mapping, Reducing, Done };
 
 struct UtilityInfo {
@@ -13,7 +13,8 @@ struct UtilityInfo {
     double network_load;
     double computation_load;
     std::string PrintInfo() {
-        return "time: " + std::to_string(time) + " network_load: " + std::to_string(network_load) + " computation_load: " + std::to_string(computation_load); 
+        return "time: " + std::to_string(time) + " network_load: " + std::to_string(network_load) +
+               " computation_load: " + std::to_string(computation_load);
     }
 };
 
@@ -22,14 +23,15 @@ struct UtilityInfo {
 */
 class Master {
 public:
-    Master(int id, std::string my_host_name_prefix, int worker_host_num, std::vector<std::string> worker_host_name_prefixs,
-           std::shared_ptr<BandWidthConfigModule> bw_config)
+    Master(int id, std::string my_host_name_prefix, int worker_host_num,
+           std::vector<std::string> worker_host_name_prefixs, std::shared_ptr<BandWidthConfigModule> bw_config, std::shared_ptr<MasterWorkerState> master_worker_state)
         : state_(MasterState::Free),
           id_(id),
           my_host_name_prefix_(my_host_name_prefix),
           worker_host_num_(worker_host_num),
           worker_host_name_prefixs_(worker_host_name_prefixs),
-          bw_config_(bw_config) {
+          bw_config_(bw_config),
+          master_worker_state_(master_worker_state) {
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":" + std::to_string(id));
         barrier_mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":" + std::to_string(id) + ":barrier");
     }
@@ -55,31 +57,34 @@ private:
     UtilityInfo CodedTeraSort();
 
     MasterState state_;
-    int id_;                           // id of master, from 1 to master_num
+    int id_;  // id of master, from 1 to master_num
     JobText job_text_;
     std::string my_host_name_prefix_;  // name of master node
     int worker_host_num_;
-    std::vector<std::string> worker_host_name_prefixs_;               // record all worker host name
+    std::vector<std::string> worker_host_name_prefixs_;        // record all worker host name
     std::vector<simgrid::s4u::Mailbox*> worker_mailboxs_;      // send info to worker managers
     simgrid::s4u::Mailbox* mailbox_;                           // receive data
-    simgrid::s4u::Mailbox* barrier_mailbox_;                   // receive barrier info from worker 
+    simgrid::s4u::Mailbox* barrier_mailbox_;                   // receive barrier info from worker
     std::vector<simgrid::s4u::Mailbox*> worker_job_mailboxs_;  // worker mailbox responsible for this job
     Configuration conf;
     CodedConfiguration coded_conf;
     std::atomic<int> r_;
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
+    std::shared_ptr<MasterWorkerState> master_worker_state_;
 };
 
 class MasterManager {
 public:
     MasterManager(int master_num, int worker_host_num, std::string my_host_name_prefix,
-                  std::vector<std::string> worker_host_name_prefixs, std::shared_ptr<BandWidthConfigModule> bw_config)
+                  std::vector<std::string> worker_host_name_prefixs, std::shared_ptr<BandWidthConfigModule> bw_config,
+                  std::shared_ptr<MasterWorkerState> master_worker_state)
         : master_num_(master_num),
           worker_host_num_(worker_host_num),
           my_host_name_prefix_(my_host_name_prefix),
           worker_host_name_prefixs_(worker_host_name_prefixs),
-          bw_config_(bw_config) {
+          bw_config_(bw_config),
+          master_worker_state_(master_worker_state) {
         for (int i = 1; i <= master_num; i++) {
             masters_state_[i] = MasterState::Free;
         }
@@ -108,4 +113,5 @@ private:
     std::mutex mutex_;                                          // lock before modify master state
     std::unordered_map<int, MasterState> masters_state_;
     std::shared_ptr<BandWidthConfigModule> bw_config_;
+    std::shared_ptr<MasterWorkerState> master_worker_state_;
 };

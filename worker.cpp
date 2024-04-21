@@ -22,31 +22,23 @@ void WorkerManager::Run() {
         // 4. let this worker to do job(including map task, shuffle task and reduce task)
         //    assign master_id and job_text to worker
         auto mailbox = simgrid::s4u::Mailbox::by_name(my_host_name_prefix_ + ":" + std::to_string(worker_id));
-        Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());
-        
-        // 5. reset this worker
-        // TODO:
-
-        mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
-        mailbox->get<char>();
+        Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());  
     }
 }
 
 int WorkerManager::FindFreeWorker() {
     while (true) {
-        mutex_.lock();
+        master_worker_state_->mutex.lock();
         for (int i = 1; i <= worker_num_; i++) {
-            if (workers_state_[i] == WorkerState::Free) {
-                workers_state_[i] = WorkerState::Mapping;
-                mutex_.unlock();
-                return i;
-            } else if(workers_state_[i] == WorkerState::DONE) {
-                workers_state_[i] = WorkerState::Mapping;
-                mutex_.unlock();
+            assert(master_worker_state_->worker_state.find(id_) != master_worker_state_->worker_state.end());
+            assert(master_worker_state_->worker_state[id_].find(i) != master_worker_state_->worker_state[id_].end());
+            if (master_worker_state_->worker_state[id_][i] == State::Free) {
+                master_worker_state_->worker_state[id_][i] = State::Busy;
+                master_worker_state_->mutex.unlock();
                 return i;
             }
         }
-        mutex_.unlock();
+        master_worker_state_->mutex.unlock();
         sleep(5);
     }
 }
@@ -80,8 +72,12 @@ void Worker::Run() {
             CodedTeraSort();
             break;
 
-        auto mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
-        mailbox->get<char>();
+        // reset worker
+        master_worker_state_->mutex.lock();
+        assert(master_worker_state_->worker_state.find(host_id_) != master_worker_state_->worker_state.end());
+        assert(master_worker_state_->worker_state[host_id_].find(id_) != master_worker_state_->worker_state[host_id_].end());
+        master_worker_state_->worker_state[host_id_][id_] = State::Free;
+        master_worker_state_->mutex.unlock();
     }
 
     }

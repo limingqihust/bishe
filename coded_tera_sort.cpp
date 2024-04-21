@@ -155,7 +155,6 @@ void Worker::CodedTeraSort() {
     auto rTime = std::chrono::duration_cast<std::chrono::duration<double>>(codegen_end - codegen_start).count();
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
-    LOG_INFO("[worker] host name: %s generate code done", my_host_name_prefix_.c_str());
     // EXECUTE MAP PHASE
     auto map_start = std::chrono::high_resolution_clock::now();
     ExecCodedMap();

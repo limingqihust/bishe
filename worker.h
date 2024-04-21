@@ -2,12 +2,12 @@
 #include <thread>
 #include "bandwidth_config.h"
 #include "common.h"
+#include "job_text.h"
 #include "tera_sort/CodeGeneration.h"
 #include "tera_sort/CodedConfiguration.h"
 #include "tera_sort/Configuration.h"
 #include "tera_sort/PartitionSampling.h"
 #include "tera_sort/Trie.h"
-#include "job_text.h"
 enum class WorkerState { Free, Mapping, Reducing, DONE };
 
 /**
@@ -18,7 +18,7 @@ class Worker {
 public:
     Worker(std::string my_host_name_prefix, std::string master_host_name_prefix, int worker_host_num,
            std::vector<std::string> worker_host_name_prefixs, int id, int host_id,
-           std::shared_ptr<BandWidthConfigModule> bw_config)
+           std::shared_ptr<BandWidthConfigModule> bw_config, std::shared_ptr<MasterWorkerState> master_worker_state)
         : state_(WorkerState::Free),
           id_(id),
           my_host_name_prefix_(my_host_name_prefix),
@@ -26,7 +26,8 @@ public:
           worker_host_num_(worker_host_num),
           worker_host_name_prefixs_(worker_host_name_prefixs),
           host_id_(host_id),
-          bw_config_(bw_config) {
+          bw_config_(bw_config),
+          master_worker_state_(master_worker_state) {
         mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":" + std::to_string(id));
         barrier_mailbox_ = simgrid::s4u::Mailbox::by_name(my_host_name_prefix + ":" + std::to_string(id) + ":barrier");
     }
@@ -71,8 +72,8 @@ private:
     void RecvEncodeData(SubsetSId nsid);
 
     WorkerState state_;
-    int id_;                                // id of worker, from 1 to worker_num_
-    int host_id_;                           // id of worker host
+    int id_;       // id of worker, from 1 to worker_num_
+    int host_id_;  // id of worker host
     std::string my_host_name_prefix_;
     std::string master_host_name_prefix_;
     int worker_host_num_;
@@ -84,6 +85,7 @@ private:
     JobText job_text_;                        // job info which this worker need to do
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
+    std::shared_ptr<MasterWorkerState> master_worker_state_;
 
     /* used by tera_sort */
     Configuration* conf;
@@ -108,14 +110,17 @@ private:
  */
 class WorkerManager {
 public:
-    WorkerManager(std::string my_host_name_prefix, std::string master_host_name_prefix, int id, int worker_num, int worker_host_num,
-                  std::vector<std::string> worker_host_name_prefixs, std::shared_ptr<BandWidthConfigModule> bw_config)
+    WorkerManager(std::string my_host_name_prefix, std::string master_host_name_prefix, int id, int worker_num,
+                  int worker_host_num, std::vector<std::string> worker_host_name_prefixs,
+                  std::shared_ptr<BandWidthConfigModule> bw_config,
+                  std::shared_ptr<MasterWorkerState> master_worker_state)
         : my_host_name_prefix_(my_host_name_prefix),
           master_host_name_prefix_(master_host_name_prefix),
           worker_num_(worker_num),
           worker_host_name_prefixs_(worker_host_name_prefixs),
           id_(id),
-          bw_config_(bw_config) {
+          bw_config_(bw_config),
+          master_worker_state_(master_worker_state) {
         assert(worker_host_num == worker_host_name_prefixs_.size());
         for (int i = 1; i <= worker_num; i++) {
             workers_state_[i] = WorkerState::Free;
@@ -134,10 +139,11 @@ private:
     int worker_num_;
     std::vector<std::string> worker_host_name_prefixs_;
     int id_;
-    std::mutex mutex_;              // need to lock mutex_ before request worker(modify worker state)
+    std::mutex mutex_;  // need to lock mutex_ before request worker(modify worker state)
     std::unordered_map<int, WorkerState> workers_state_;
     simgrid::s4u::Mailbox* mailbox_;              // receive message from master manager
     simgrid::s4u::Mailbox* master_host_mailbox_;  // send message to master manager
 
     std::shared_ptr<BandWidthConfigModule> bw_config_;
+    std::shared_ptr<MasterWorkerState> master_worker_state_;
 };

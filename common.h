@@ -10,11 +10,11 @@
 #include "logger.h"
 
 enum class State {
-    FREE, BUSY
+    Free, Busy
 };
 
 struct MasterWorkerState {
     std::mutex mutex;
-    std::unordered_map<int, State> master_state;
-    std::vector<int, std::unordered_map<int, State>> worker_state;
+    std::unordered_map<int, State> master_state;                            // master id --> state
+    std::unordered_map<int, std::unordered_map<int, State>> worker_state;   // worker manager id --> worker id --> state
 };

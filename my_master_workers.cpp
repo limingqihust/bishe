@@ -7,6 +7,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(s4u_app_masterworker, "Messages specific for this e
 
 // init bandwidth config
 auto bw_config = std::make_shared<BandWidthConfigModule>("./config/bandwidth.config");
+auto master_worker_state = std::make_shared<MasterWorkerState>();
 
 /**
  * 
@@ -29,14 +30,27 @@ static void my_master_manager(std::vector<std::string> args) {
     for (int i = 4; i < args.size(); i++) {
         worker_host_name_prefixs.emplace_back(args[i]);
     }
-    auto master_manager =
-        std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name_prefix, worker_host_name_prefixs, bw_config);
+    master_worker_state->mutex.lock();
+    for (int i = 1; i <= master_num; i++) {
+        master_worker_state->master_state[i] = State::Free;
+    }
+    for (int i = 1; i <= worker_host_num; i++) {
+        for (int j = 1; j <= master_num; j++) {
+            master_worker_state->worker_state[i][j] = State::Free;
+        }
+    }
+    master_worker_state->mutex.unlock();
 
-    for (int i = 0; i < 1; i++) {
+
+    auto master_manager = std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name_prefix,
+                                                          worker_host_name_prefixs, bw_config, master_worker_state);
+
+    for (int i = 0; i < 5; i++) {
         JobText job = job_queue->Pop();
         master_manager->Run(job);
     }
-
+    auto mailbox = simgrid::s4u::Mailbox::by_name("unreachable");
+    mailbox->get<char>();
     // online_learning_thd.join();
 }
 
@@ -56,8 +70,9 @@ static void my_worker_manager(std::vector<std::string> args) {
     for (int i = 5; i < args.size(); i++) {
         worker_host_names.emplace_back(args[i]);
     }
-    auto worker_manager = std::make_shared<WorkerManager>(my_host_name_prefix, master_host_name_prefix, id, worker_num,
-                                                          worker_host_names.size(), worker_host_names, bw_config);
+    auto worker_manager =
+        std::make_shared<WorkerManager>(my_host_name_prefix, master_host_name_prefix, id, worker_num,
+                                        worker_host_names.size(), worker_host_names, bw_config, master_worker_state);
     worker_manager->Run();
 }
 
@@ -69,8 +84,8 @@ static void my_master(std::vector<std::string> args) {
     for (int i = 4; i < args.size(); i++) {
         worker_host_name_prefixs.emplace_back(args[i]);
     }
-    auto master =
-        std::make_shared<Master>(id, my_host_name_prefix, worker_host_num, worker_host_name_prefixs, bw_config);
+    auto master = std::make_shared<Master>(id, my_host_name_prefix, worker_host_num, worker_host_name_prefixs,
+                                           bw_config, master_worker_state);
     master->Run();
 }
 
@@ -85,7 +100,7 @@ static void my_worker(std::vector<std::string> args) {
         worker_host_name_prefixs.emplace_back(args[i]);
     }
     auto worker = std::make_shared<Worker>(my_host_name_prefix, master_host_name_prefix, worker_host_num,
-                                           worker_host_name_prefixs, id, host_id, bw_config);
+                                           worker_host_name_prefixs, id, host_id, bw_config, master_worker_state);
     worker->Run();
 }
 
