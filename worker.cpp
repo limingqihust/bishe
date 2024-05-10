@@ -117,3 +117,23 @@ void Worker::Clear() {
 }
 
 
+void Worker::TeraSortClear() {
+    delete conf;
+    inputPartitionCollection.clear();
+    localLoadSet.clear();
+    // LOG_INFO("partitionList size: %ld", partitionList.size());
+    for(auto p : partitionList) {
+        delete [] p;
+    }
+    partitionList.clear();
+    partitionCollection.clear();
+    partitionTxData.clear();
+    partitionRxData.clear();
+    // LOG_INFO("localList size: %ld", localList.size());
+    for(auto p : localList) {
+        delete [] p;
+    }
+    localList.clear();
+    delete trie;
+}
+

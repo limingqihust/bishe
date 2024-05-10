@@ -51,6 +51,7 @@ private:
     void ExecMap();
     void ExecReduce();
     void Clear();
+    void TeraSortClear();
     TrieNode* buildTrie(PartitionList* partitionList, int lower, int upper, unsigned char* prefix, int prefixSize,
                         int maxDepth);
     void PrintLocalList();

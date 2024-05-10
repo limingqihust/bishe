@@ -9,5 +9,4 @@ master-workers
 my_master_workers
 *.o
 *.out
-Input/Input10000_*
-Input/Input10000-C*
+Input/*

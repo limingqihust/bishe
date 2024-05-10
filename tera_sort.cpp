@@ -224,6 +224,7 @@ void Worker::TeraSort() {
     delete mailbox_->get<unsigned char>();
 
     PrintLocalList();
+    TeraSortClear();
 }
 
 void Worker::ExecMap() {
