@@ -57,7 +57,10 @@ private:
     std::default_random_engine exponential_generator_;
     std::exponential_distribution<double> exponential_distribution_; // 1.5
     double exponential_base_;                                        // 50
-
+    
+    // used by pareto distribution
+    double pareto_shape_; // 2
+    double pareto_scale_; // 20
 };
 
 void Send(simgrid::s4u::Mailbox* mailbox, double bw, void* message, int size);

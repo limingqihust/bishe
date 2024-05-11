@@ -109,7 +109,7 @@ UtilityInfo MasterManager::RunTryR(JobText& job, int r) {
     assert(1 <= r && r <= worker_host_num_ - 1);
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
-    LOG_INFO("[master manager] choose id: %d to do job", master_id);
+    // LOG_INFO("[master manager] choose id: %d to do job", master_id);
     // 2. assign job to this master
     job.r = r;
     job.input_file_num = GetJobTextInputFileNum(job);
@@ -169,7 +169,7 @@ void Master::DoJob(const std::vector<int>& worker_ids) {
  * exec job with parameter r, return utility_info
 */
 UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
-    LOG_INFO("[master] id: %d do job: %s try r: %d", id_, JobTextToString(id_, job_text_).c_str(), r);
+    // LOG_INFO("[master] id: %d do job: %s try r: %d", id_, JobTextToString(id_, job_text_).c_str(), r);
     assert(worker_ids.size() == worker_host_num_);
     UtilityInfo res;
     worker_mailboxs_.clear();
@@ -184,7 +184,7 @@ UtilityInfo Master::DoJobTryR(std::vector<int> worker_ids, int r) {
         for (int i = 0; i < worker_host_num_; i++) {
             worker_ids_temp[i] = worker_ids[i];
         }
-        LOG_INFO("[master] id: %d send worker ids to mailbox: %s", id_, mailbox->get_cname());
+        // LOG_INFO("[master] id: %d send worker ids to mailbox: %s", id_, mailbox->get_cname());
         mailbox->put(worker_ids_temp, worker_host_num_ * sizeof(int));
     }
 

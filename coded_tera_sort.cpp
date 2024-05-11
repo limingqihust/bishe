@@ -2,7 +2,7 @@
 #include "worker.h"
 #define PRINT_LOCAL_LIST
 UtilityInfo Master::CodedTeraSort() {
-    LOG_INFO("[master] master_id: %d, CodedTeraSort start", id_);
+    // LOG_INFO("[master] master_id: %d, CodedTeraSort start", id_);
 
     UtilityInfo res;
     // GENERATE LIST OF PARTITIONS.
@@ -34,8 +34,8 @@ UtilityInfo Master::CodedTeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] CODEGEN     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10)
-              << maxTime << endl;
+    // std::cout << "[master] CODEGEN     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10)
+    //           << maxTime << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -49,8 +49,9 @@ UtilityInfo Master::CodedTeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
+    std::cout << "MAP " << avgTime / numWorker << endl;
     res.computation_load = avgTime / numWorker;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
@@ -65,8 +66,8 @@ UtilityInfo Master::CodedTeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] ENCODE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] ENCODE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -92,8 +93,9 @@ UtilityInfo Master::CodedTeraSort() {
         delete time;
     }
     res.network_load = avgTime / numWorker;
-    std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
+    std::cout << "SHUFFLE " << avgTime / numWorker << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -107,8 +109,8 @@ UtilityInfo Master::CodedTeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] DECODE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] DECODE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -122,17 +124,17 @@ UtilityInfo Master::CodedTeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] REDUCE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] REDUCE     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
     return res;
 }
 
 void Worker::CodedTeraSort() {
-    LOG_INFO(
-        "[worker] my_host_name: %s, id: %d, CodedTeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
-        "intpuf_file_prefix: %s",
-        my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
-        job_text_.input_file_prefix.c_str());
+    // LOG_INFO(
+    //     "[worker] my_host_name: %s, id: %d, CodedTeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
+    //     "intpuf_file_prefix: %s",
+    //     my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+    //     job_text_.input_file_prefix.c_str());
     // RECEIVE CONFIGURATION FROM MASTER
     // coded_conf = new CodedConfiguration;
     coded_conf = new CodedConfiguration(job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
@@ -190,9 +192,9 @@ void Worker::CodedTeraSort() {
     auto reduce_end = std::chrono::high_resolution_clock::now();
     rTime = std::chrono::duration_cast<std::chrono::duration<double>>(reduce_end - reduce_start).count();
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
-#ifdef PRINT_LOCAL_LIST
-    PrintLocalList();
-#endif
+// #ifdef PRINT_LOCAL_LIST
+//     PrintLocalList();
+// #endif
 
     Clear();
 }

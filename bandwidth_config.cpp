@@ -47,6 +47,10 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
             exponential_distribution_ = std::exponential_distribution<double>(std::stod(value));
         } else if (key == "exponential_base") {
             exponential_base_ = std::stod(value);
+        } else if (key == "pareto_scale") {
+            pareto_scale_ = std::stod(value);
+        } else if (key == "pareto_shape") { 
+            pareto_shape_ = std::stod(value);
         } else {
             assert(false && "undefine key");
         }
@@ -69,7 +73,13 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
             max_bw_ = max_bw_min_;
             break;
         case BandWidthDistributionType::Pareto:
-            assert(false && "unrealized");
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<> dis(0.0, 1.0);
+            m_w_bw_ = pareto_scale_ / std::pow(dis(gen), 1.0 / pareto_shape_);
+            w_w_bw_ = m_w_bw_.load();
+            broadcast_bw_ = 8 * m_w_bw_.load();
+            max_bw_ = max_bw_min_;
             break;
     }
     input.close();
@@ -97,15 +107,20 @@ void BandWidthConfigModule::DynamicAdjustBandWidth() {
                 }
                 break;
             case BandWidthDistributionType::Exponential:
-                m_w_bw_ = exponential_base_ + exponential_distribution_(exponential_generator_);
+                m_w_bw_ = exponential_base_ + exponential_distribution_(exponential_generator_) * 10;
                 w_w_bw_ = m_w_bw_.load();
-                broadcast_bw_ = 8 * m_w_bw_.load();
+                broadcast_bw_ = 10 * m_w_bw_.load();
                 break;
             case BandWidthDistributionType::Pareto:
-                assert(false && "unrealized");
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_real_distribution<> dis(0.0, 1.0);
+                m_w_bw_ = pareto_scale_ / std::pow(dis(gen), 1.0 / pareto_shape_);
+                w_w_bw_ = m_w_bw_.load();
+                broadcast_bw_ = 10 * m_w_bw_.load();
                 break;
         }
-        // std::cout << "m_w_bw: " << m_w_bw_ << " w_w_bw: " << w_w_bw_ << " broadcast_bw: " << broadcast_bw_ << " max_bw: " << max_bw_ << std::endl;
+        std::cout << "m_w_bw: " << m_w_bw_ << " w_w_bw: " << w_w_bw_ << " broadcast_bw: " << broadcast_bw_ << " max_bw: " << max_bw_ << std::endl;
     }
 }
 
