@@ -35,7 +35,7 @@ void OnlineLearningModule::DoMicroExperient() {
     int a_r = GetAR();
     int b_r = GetBR();
     // do first two a/b test
-    LOG_INFO("[OnlineLearningModule] do first a/b test, assign job to master_manager with a_r: %d, b_r: %d", a_r, b_r);
+    // LOG_INFO("[OnlineLearningModule] do first a/b test, assign job to master_manager with a_r: %d, b_r: %d", a_r, b_r);
     // thd_a = std::thread([&] { utility_1.first = master_manager_->RunTryR(job_queue_->Pop(), a_r); });
     utility_1.first = master_manager_->RunTryR(lab1.first, a_r);
     // LOG_INFO("[OnlineLearningModule] first a lab done, utility: %s", utility_1.first.PrintInfo().c_str());
@@ -69,17 +69,17 @@ void OnlineLearningModule::DoMicroExperient() {
 */
 void OnlineLearningModule::UpdateRAccordingToABTest(const UtilityInfo& u_1_a, const UtilityInfo& u_1_b,
                                                     const UtilityInfo& u_2_a, const UtilityInfo& u_2_b) {
-    LOG_INFO("[UpdateRAccordingToABTest] %lf, %lf, %lf, %lf", GetUtility(u_1_a), GetUtility(u_1_b), GetUtility(u_2_a), GetUtility(u_2_b));
+    // LOG_INFO("[UpdateRAccordingToABTest] %lf, %lf, %lf, %lf", GetUtility(u_1_a), GetUtility(u_1_b), GetUtility(u_2_a), GetUtility(u_2_b));
     if (GetUtility(u_1_a) < GetUtility(u_1_b) && GetUtility(u_2_a) < GetUtility(u_2_b)) {
-        LOG_INFO("[OnlineLearningModule] modify r from %d to %d", r_, GetAR());
+        // LOG_INFO("[OnlineLearningModule] modify r from %d to %d", r_, GetAR());
         r_ = GetAR();
         master_manager_->SetR(r_);
     } else if (GetUtility(u_1_a) > GetUtility(u_1_b) && GetUtility(u_2_a) > GetUtility(u_2_b)) {
-        LOG_INFO("[OnlineLearningModule] modify r from %d to %d", r_, GetBR());
+        // LOG_INFO("[OnlineLearningModule] modify r from %d to %d", r_, GetBR());
         r_ = GetBR();
         master_manager_->SetR(r_);
     } else {
-        LOG_INFO("[OnlineLearningModule] update eta");
+        // LOG_INFO("[OnlineLearningModule] update eta");
         UpdateEta();
     }
 }

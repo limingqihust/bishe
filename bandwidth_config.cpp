@@ -69,7 +69,7 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
         case BandWidthDistributionType::Exponential: 
             m_w_bw_ = exponential_base_ + exponential_distribution_(exponential_generator_);
             w_w_bw_ = m_w_bw_.load();
-            broadcast_bw_ = 8 * m_w_bw_.load();
+            broadcast_bw_ = 6 * m_w_bw_.load();
             max_bw_ = max_bw_min_;
             break;
         case BandWidthDistributionType::Pareto:
@@ -78,7 +78,7 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
             std::uniform_real_distribution<> dis(0.0, 1.0);
             m_w_bw_ = pareto_scale_ / std::pow(dis(gen), 1.0 / pareto_shape_);
             w_w_bw_ = m_w_bw_.load();
-            broadcast_bw_ = 8 * m_w_bw_.load();
+            broadcast_bw_ = 6 * m_w_bw_.load();
             max_bw_ = max_bw_min_;
             break;
     }
@@ -109,7 +109,7 @@ void BandWidthConfigModule::DynamicAdjustBandWidth() {
             case BandWidthDistributionType::Exponential:
                 m_w_bw_ = exponential_base_ + exponential_distribution_(exponential_generator_) * 10;
                 w_w_bw_ = m_w_bw_.load();
-                broadcast_bw_ = 10 * m_w_bw_.load();
+                broadcast_bw_ = 6 * m_w_bw_.load();
                 break;
             case BandWidthDistributionType::Pareto:
                 std::random_device rd;
@@ -117,10 +117,10 @@ void BandWidthConfigModule::DynamicAdjustBandWidth() {
                 std::uniform_real_distribution<> dis(0.0, 1.0);
                 m_w_bw_ = pareto_scale_ / std::pow(dis(gen), 1.0 / pareto_shape_);
                 w_w_bw_ = m_w_bw_.load();
-                broadcast_bw_ = 10 * m_w_bw_.load();
+                broadcast_bw_ = 6 * m_w_bw_.load();
                 break;
         }
-        std::cout << "m_w_bw: " << m_w_bw_ << " w_w_bw: " << w_w_bw_ << " broadcast_bw: " << broadcast_bw_ << " max_bw: " << max_bw_ << std::endl;
+        // std::cout << "m_w_bw: " << m_w_bw_ << " w_w_bw: " << w_w_bw_ << " broadcast_bw: " << broadcast_bw_ << " max_bw: " << max_bw_ << std::endl;
     }
 }
 

@@ -28,15 +28,15 @@ static void my_master(std::vector<std::string> args) {
         std::make_shared<MasterManager>(master_num, worker_host_num, my_host_name, worker_host_names, bw_config);
 
     // start OnlineLearningModule
-    auto online_learning_module =
-        std::make_shared<OnlineLearningModule>(master_manager, job_queue, 1, worker_host_num - 1, 10);
-    online_learning_module->DoWork();
+    // auto online_learning_module =
+    //     std::make_shared<OnlineLearningModule>(master_manager, job_queue, 1, worker_host_num - 1, 10);
+    // online_learning_module->DoWork();
 
     // // do job now
-    // for(int i = 0; i < 128; i++) {
-    //     JobText job_text = job_queue->Pop();
-    //     master_manager->Run(job_text);
-    // }
+    for(int i = 0; i < 128; i++) {
+        JobText job_text = job_queue->Pop();
+        master_manager->Run(job_text);
+    }
     while(true) {
         sleep(1);
     }
