@@ -32,7 +32,7 @@ void InputSplitter::splitInputFile()
     cout << "Cannot open input file " << conf->getInputPath() << endl;
     assert( false );
   }
-  cout << "inputFile " << conf->getInputPath() << " is open\n";
+  // cout << "inputFile " << conf->getInputPath() << " is open\n";
 
   unsigned int numInput = conf->getNumInput();
   unsigned int LineSize = conf->getLineSize();
@@ -101,5 +101,5 @@ void InputSplitter::createSplit( ifstream &inputFile, int splitNumber, unsigned 
 
   splitFile.close();
 
-  cout << "Create " << splitPath << endl;
+  // cout << "Create " << splitPath << endl;
 }

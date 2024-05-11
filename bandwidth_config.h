@@ -8,9 +8,13 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <random>
 #include "logger.h"
 #include <simgrid/s4u.hpp>
 enum class BWType { M_W, W_W, BRAODCAST, MAX };
+
+enum class BandWidthDistributionType { Uniform, Exponential, Pareto};
+
 struct BandWidthConfigUnit {
     double time;
     double m_w_bw;
@@ -35,7 +39,37 @@ private:
 
     std::thread dynamic_adjust_bw_thd_;  // responsible for dynamic adjustment of bandwidth
     std::vector<BandWidthConfigUnit> bw_config_;
-    int cur_pos = 0;
+   
+    // config
+    BandWidthDistributionType bw_distribution_type_;
+    int interval_;
+    // used by uniform distribution
+    double m_w_bw_min_;
+    double w_w_bw_min_;
+    double broadcast_bw_min_;
+    double max_bw_min_;
+    double m_w_bw_max_;
+    double w_w_bw_max_;
+    double broadcast_bw_max_;
+    double max_bw_max_;
+
+    // used by exponential distribution
+    std::default_random_engine exponential_generator_;
+    std::exponential_distribution<double> exponential_distribution_; // 1.5
+    double exponential_base_;                                        // 50
+
 };
 
 void Send(simgrid::s4u::Mailbox* mailbox, double bw, void* message, int size);
+
+static BandWidthDistributionType StrToBandWidthDistributionType(const std::string str) {
+    if (str == "Uniform") {
+        return BandWidthDistributionType::Uniform;
+    } else if (str == "Exponential") {
+        return BandWidthDistributionType::Exponential;
+    } else if (str == "Pareto") {
+        return BandWidthDistributionType::Pareto;
+    } else {
+        assert(false && "undefined BandWidthDistributionType");
+    }
+}

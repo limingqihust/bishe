@@ -32,7 +32,7 @@ static void my_master(std::vector<std::string> args) {
     // online_learning_module->DoWork();
 
     // // do job now
-    for(int i = 0; i < 32; i++) {
+    for(int i = 0; i < 128; i++) {
         JobText job_text = job_queue->Pop();
         master_manager->Run(job_text);
     }

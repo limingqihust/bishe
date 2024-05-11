@@ -8,7 +8,7 @@ void MasterManager::Run(JobText& job_text) {
     assert(1 <= job_text.r && job_text.r <= worker_host_num_ - 1);
     // 1. find a free master, set its state to busy
     int master_id = FindFreeMaster();
-    LOG_INFO("[master manager] choose id: %d to do job: %s", master_id, JobTextToString(master_id, job_text).c_str());
+    // LOG_INFO("[master manager] choose id: %d to do job: %s", master_id, JobTextToString(master_id, job_text).c_str());
     // 2. assign job to this master
     job_text.input_file_num = GetJobTextInputFileNum(job_text);
     masters_[master_id]->SetJobText(job_text);
@@ -59,13 +59,13 @@ std::vector<int> MasterManager::RequestWorkerIds(int master_id, const JobText& j
         const std::string info = JobTextToString(master_id, job_text);
         char* temp = new char[info.size()];
         strcpy(temp, info.c_str());
-        LOG_INFO("[master manager] send job_text to mailbox: %s", mailbox->get_cname());
+        // LOG_INFO("[master manager] send job_text to mailbox: %s", mailbox->get_cname());
         Send(mailbox, bw_config_->GetBW(BWType::MAX), temp, info.size());
 
         // record worker_id
         int* worker_id_info = mailbox_->get<int>();
         worker_ids.push_back(*worker_id_info);
-        LOG_INFO("[master] receive worker_id: %d from mailbox: %s", *worker_id_info, mailbox_->get_cname());
+        // LOG_INFO("[master] receive worker_id: %d from mailbox: %s", *worker_id_info, mailbox_->get_cname());
         delete worker_id_info;
     }
     return worker_ids;
@@ -86,9 +86,9 @@ void MasterManager::SplitInput(const JobText& job_text) {
     InputSplitter input_splitter;
     input_splitter.setConfiguration(conf);
     input_splitter.splitInputFile();
-    LOG_INFO(
-        "[master manager] split input file, input_file_num: %d, reducer_num: %d, r: %d, input_file_prefix: %s done",
-        job_text.input_file_num, job_text.reducer_num, job_text.r, job_text.input_file_prefix.c_str());
+    // LOG_INFO(
+    //     "[master manager] split input file, input_file_num: %d, reducer_num: %d, r: %d, input_file_prefix: %s done",
+    //     job_text.input_file_num, job_text.reducer_num, job_text.r, job_text.input_file_prefix.c_str());
 
     delete conf;
 }
@@ -136,7 +136,7 @@ UtilityInfo MasterManager::RunTryR(JobText& job, int r) {
  * 3. 处理Worker的Task请求
 */
 void Master::DoJob(const std::vector<int>& worker_ids) {
-    LOG_INFO("[master] id: %d do job: %s", id_, JobTextToString(id_, job_text_).c_str());
+    // LOG_INFO("[master] id: %d do job: %s", id_, JobTextToString(id_, job_text_).c_str());
     assert(worker_ids.size() == worker_host_num_);
     worker_mailboxs_.clear();
     for (int i = 0; i < worker_host_num_; i++) {
@@ -150,7 +150,7 @@ void Master::DoJob(const std::vector<int>& worker_ids) {
         for (int i = 0; i < worker_host_num_; i++) {
             worker_ids_temp[i] = worker_ids[i];
         }
-        LOG_INFO("[master] id: %d send worker ids to mailbox: %s", id_, mailbox->get_cname());
+        // LOG_INFO("[master] id: %d send worker ids to mailbox: %s", id_, mailbox->get_cname());
         mailbox->put(worker_ids_temp, worker_host_num_ * sizeof(int));
     }
 

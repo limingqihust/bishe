@@ -6,9 +6,9 @@
 void WorkerManager::Run() {
     while (true) {
         // 1. receive a request from master
-        LOG_INFO("[worker manager] my_host_name: %s wait for request from mailbox: %s", my_host_name_.c_str(), mailbox_->get_cname());
+        // LOG_INFO("[worker manager] my_host_name: %s wait for request from mailbox: %s", my_host_name_.c_str(), mailbox_->get_cname());
         char* temp = mailbox_->get<char>();
-        LOG_INFO("[worker manager] my_host_name: %s receive request from master in mailbox:%s", my_host_name_.c_str(), mailbox_->get_cname());
+        // LOG_INFO("[worker manager] my_host_name: %s receive request from master in mailbox:%s", my_host_name_.c_str(), mailbox_->get_cname());
         std::string info(temp);
         delete [] temp;
         int master_id;
@@ -23,7 +23,7 @@ void WorkerManager::Run() {
         workers_[worker_id]->SetJobText(job_text);
         // 3. notify worker id to master
         auto master_mailbox = simgrid::s4u::Mailbox::by_name(master_host_name_);
-        LOG_INFO("[worker manager] host_name: %s choose worker id: %d, notify to mailbox: %s", my_host_name_.c_str(), worker_id, master_mailbox->get_cname());
+        // LOG_INFO("[worker manager] host_name: %s choose worker id: %d, notify to mailbox: %s", my_host_name_.c_str(), worker_id, master_mailbox->get_cname());
         master_mailbox->put(new int(worker_id), 4);
 
         // 4. let this worker to do job(including map task, shuffle task and reduce task)

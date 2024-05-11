@@ -2,7 +2,7 @@
 #include "worker.h"
 
 UtilityInfo Master::TeraSort() {
-    LOG_INFO("[master] master_id: %d, TeraSort start", id_);
+    // LOG_INFO("[master] master_id: %d, TeraSort start", id_);
     UtilityInfo res;
     // GENERATE LIST OF PARTITIONS.
     PartitionSampling partitioner;
@@ -37,8 +37,9 @@ UtilityInfo Master::TeraSort() {
         delete time;
     }
     res.computation_load = avgTime / numWorker;
-    std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] MAP     | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
+    std::cout << "MAP " << avgTime / numWorker << endl;
     assert(worker_mailboxs_.size() == numWorker);
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
@@ -54,8 +55,8 @@ UtilityInfo Master::TeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] PACK    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] PACK    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -81,8 +82,9 @@ UtilityInfo Master::TeraSort() {
         delete time;
     }
     res.network_load = avgTime / numWorker;
-    std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] SHUFFLE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
+    std::cout << "SHUFFLE " << avgTime / numWorker << endl;
 
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
@@ -98,8 +100,8 @@ UtilityInfo Master::TeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] UNPACK    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] UNPACK    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -114,8 +116,8 @@ UtilityInfo Master::TeraSort() {
         maxTime = max(maxTime, *time);
         delete time;
     }
-    std::cout << "[master] REDUCE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
-              << endl;
+    // std::cout << "[master] REDUCE    | Avg = " << setw(10) << avgTime / numWorker << "   Max = " << setw(10) << maxTime
+    //           << endl;
     for (auto mailbox : worker_mailboxs_) {
         Send(mailbox, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
     }
@@ -125,11 +127,11 @@ UtilityInfo Master::TeraSort() {
 }
 
 void Worker::TeraSort() {
-    LOG_INFO(
-        "[worker] my_host_name: %s, id: %d, TeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
-        "intpuf_file_prefix: %s",
-        my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
-        job_text_.input_file_prefix.c_str());  // RECEIVE CONFIGURATION FROM MASTER
+    // LOG_INFO(
+    //     "[worker] my_host_name: %s, id: %d, TeraSort start, input_file_num: %d, reducer_num: %d, r: %d, "
+    //     "intpuf_file_prefix: %s",
+    //     my_host_name_.c_str(), id_, job_text_.input_file_num, job_text_.reducer_num, job_text_.r,
+    //     job_text_.input_file_prefix.c_str());  // RECEIVE CONFIGURATION FROM MASTER
     // conf = new Configuration;
     conf = new Configuration(job_text_.input_file_num, job_text_.reducer_num, job_text_.r, job_text_.input_file_prefix);
     // MPI_Bcast( (void*) conf, sizeof( Configuration ), MPI_CHAR, 0, MPI_COMM_WORLD );
@@ -145,7 +147,8 @@ void Worker::TeraSort() {
 
     // SHUFFLING PHASE
     unsigned int lineSize = conf->getLineSize();
-    double shuffle_start = simgrid::s4u::Engine::get_clock();
+    double s4u_start = simgrid::s4u::Engine::get_clock();
+    auto shuffle_start = std::chrono::high_resolution_clock::now();
     for (unsigned int i = 1; i <= conf->getNumReducer(); i++) {
         if (i == host_id_) {  // should send to other worker
             // wait for master permission to send data
@@ -180,8 +183,12 @@ void Worker::TeraSort() {
             Send(master_mailbox_, bw_config_->GetBW(BWType::MAX), new unsigned char, sizeof(unsigned char));
         }
     }
-    auto shuffle_end = simgrid::s4u::Engine::get_clock();
-    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_end - shuffle_start), sizeof(double));
+    double s4u_end = simgrid::s4u::Engine::get_clock();
+    simgrid::s4u::this_actor::execute(s4u_end - s4u_start);
+    auto shuffle_end = std::chrono::high_resolution_clock::now();
+    // auto shuffle_time = std::chrono::duration_cast<std::chrono::duration<double>>(shuffle_end - shuffle_start).count();
+    auto shuffle_time = s4u_end - s4u_start;
+    Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(shuffle_time), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
     // UNPACK PHASE
@@ -223,7 +230,7 @@ void Worker::TeraSort() {
     Send(master_mailbox_, bw_config_->GetBW(BWType::M_W), new double(rTime), sizeof(double));
     delete mailbox_->get<unsigned char>();
 
-    PrintLocalList();
+    // PrintLocalList();
     TeraSortClear();
 }
 

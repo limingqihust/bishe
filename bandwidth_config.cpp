@@ -14,21 +14,65 @@ BandWidthConfigModule::BandWidthConfigModule(const std::string& path) {
         assert(false && "could open bandwidth config file");
     }
     while (std::getline(input, line)) {
-        std::istringstream iss(line);
-        std::vector<double> temp;
-        double token;
-        while (iss >> token) {
-            temp.emplace_back(token);
+        if (line[0] == '#') {
+            continue;
         }
-        assert(temp.size() == 5);
-        bw_config_.push_back({temp[0], temp[1], temp[2], temp[3], temp[4]});
+        if (line.size() == 0) {
+            continue;
+        }
+        auto pos = line.find(' ');
+        const std::string key = line.substr(0, pos);
+        const std::string value = line.substr(pos + 1, line.size());
+        if (key == "bandwidth_distribution_type") {
+            bw_distribution_type_ = StrToBandWidthDistributionType(value);
+        } else if (key == "interval") {
+            interval_ = std::stoi(value);
+        } else if (key == "m_w_bw_min") {
+            m_w_bw_min_ = std::stoi(value);
+        } else if (key == "w_w_bw_min") {
+            w_w_bw_min_ = std::stoi(value);
+        } else if (key == "broadcast_bw_min") {
+            broadcast_bw_min_ = std::stoi(value);
+        } else if (key == "max_bw_min") {
+            max_bw_min_ = std::stoi(value);
+        } else if (key == "m_w_bw_max") {
+            m_w_bw_max_ = std::stoi(value);
+        } else if (key == "w_w_bw_max") {
+            w_w_bw_max_ = std::stoi(value);
+        } else if (key == "broadcast_bw_max") {
+            broadcast_bw_max_ = std::stoi(value);
+        } else if (key == "max_bw_max") {
+            max_bw_max_ = std::stoi(value);
+        } else if (key == "exponential_distribution") {
+            exponential_distribution_ = std::exponential_distribution<double>(std::stod(value));
+        } else if (key == "exponential_base") {
+            exponential_base_ = std::stod(value);
+        } else {
+            assert(false && "undefine key");
+        }
     }
-
+    // LOG_INFO("[BandWidthConfigModule] interval: %d m_w_bw_min: %f w_w_bw_min: %f broadcast_bw_min: %f max_bw_min: %f m_w_bw_max: %f w_w_bw_max: %f broadcast_bw_max: %f", 
+    //                                     interval_, m_w_bw_min_, w_w_bw_min_, broadcast_bw_min_, max_bw_min_, m_w_bw_max_, w_w_bw_max_, broadcast_bw_max_);
+    
+    // init 
+    switch (bw_distribution_type_) {
+        case BandWidthDistributionType::Uniform:
+            m_w_bw_ = m_w_bw_min_;
+            w_w_bw_ = w_w_bw_min_;
+            broadcast_bw_ = broadcast_bw_min_;
+            max_bw_ = max_bw_min_;
+            break;
+        case BandWidthDistributionType::Exponential: 
+            m_w_bw_ = exponential_base_ + exponential_distribution_(exponential_generator_);
+            w_w_bw_ = m_w_bw_.load();
+            broadcast_bw_ = 8 * m_w_bw_.load();
+            max_bw_ = max_bw_min_;
+            break;
+        case BandWidthDistributionType::Pareto:
+            assert(false && "unrealized");
+            break;
+    }
     input.close();
-    m_w_bw_ = bw_config_.front().m_w_bw;
-    w_w_bw_ = bw_config_.front().w_w_bw;
-    broadcast_bw_ = bw_config_.front().broadcast_bw;
-    max_bw_ = bw_config_.front().max_bw;
 
     dynamic_adjust_bw_thd_ = std::thread([&] { DynamicAdjustBandWidth(); });
 }
@@ -39,12 +83,29 @@ BandWidthConfigModule::~BandWidthConfigModule() {
 
 void BandWidthConfigModule::DynamicAdjustBandWidth() {
     while (true) {
-        sleep(bw_config_[cur_pos].time);
-        cur_pos = (cur_pos + 1) % bw_config_.size();
-        m_w_bw_ = bw_config_[cur_pos].m_w_bw;
-        w_w_bw_ = bw_config_[cur_pos].w_w_bw;
-        broadcast_bw_ = bw_config_[cur_pos].broadcast_bw;
-        max_bw_ = bw_config_[cur_pos].max_bw;
+        sleep(interval_);
+        switch (bw_distribution_type_) {
+            case BandWidthDistributionType::Uniform:
+                if (m_w_bw_ == m_w_bw_min_) {
+                    m_w_bw_ = m_w_bw_max_;
+                    w_w_bw_ = w_w_bw_max_;
+                    broadcast_bw_ = broadcast_bw_max_;
+                } else {
+                    m_w_bw_ = m_w_bw_min_;
+                    w_w_bw_ = w_w_bw_min_;
+                    broadcast_bw_ = broadcast_bw_min_;
+                }
+                break;
+            case BandWidthDistributionType::Exponential:
+                m_w_bw_ = exponential_base_ + exponential_distribution_(exponential_generator_);
+                w_w_bw_ = m_w_bw_.load();
+                broadcast_bw_ = 8 * m_w_bw_.load();
+                break;
+            case BandWidthDistributionType::Pareto:
+                assert(false && "unrealized");
+                break;
+        }
+        // std::cout << "m_w_bw: " << m_w_bw_ << " w_w_bw: " << w_w_bw_ << " broadcast_bw: " << broadcast_bw_ << " max_bw: " << max_bw_ << std::endl;
     }
 }
 
